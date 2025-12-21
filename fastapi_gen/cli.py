@@ -9,9 +9,11 @@ from . import __version__
 from .config import (
     AIFrameworkType,
     AuthType,
+    BackgroundTaskType,
     CIType,
     DatabaseType,
     FrontendType,
+    OAuthProvider,
     ProjectConfig,
 )
 from .generator import generate_project, post_generation_tasks
@@ -137,6 +139,44 @@ def new(output: Path | None, no_input: bool, name: str | None) -> None:
     default="pydantic_ai",
     help="AI framework (default: pydantic_ai)",
 )
+# New optional feature flags
+@click.option("--redis", is_flag=True, help="Enable Redis")
+@click.option("--caching", is_flag=True, help="Enable caching (requires --redis)")
+@click.option("--rate-limiting", is_flag=True, help="Enable rate limiting")
+@click.option("--admin-panel", is_flag=True, help="Enable admin panel (SQLAdmin)")
+@click.option("--websockets", is_flag=True, help="Enable WebSocket support")
+@click.option(
+    "--task-queue",
+    type=click.Choice(["none", "celery", "taskiq", "arq"]),
+    default="none",
+    help="Background task queue",
+)
+@click.option("--oauth-google", is_flag=True, help="Enable Google OAuth")
+@click.option("--session-management", is_flag=True, help="Enable session management")
+@click.option("--kubernetes", is_flag=True, help="Generate Kubernetes manifests")
+@click.option(
+    "--ci",
+    type=click.Choice(["github", "gitlab", "none"]),
+    default="github",
+    help="CI/CD system",
+)
+@click.option("--sentry", is_flag=True, help="Enable Sentry error tracking")
+@click.option("--prometheus", is_flag=True, help="Enable Prometheus metrics")
+@click.option("--file-storage", is_flag=True, help="Enable S3/MinIO file storage")
+@click.option("--webhooks", is_flag=True, help="Enable webhooks support")
+@click.option(
+    "--python-version",
+    type=click.Choice(["3.11", "3.12", "3.13"]),
+    default="3.12",
+    help="Python version",
+)
+@click.option("--i18n", is_flag=True, help="Enable internationalization")
+@click.option(
+    "--preset",
+    type=click.Choice(["production", "ai-agent"]),
+    default=None,
+    help="Apply configuration preset",
+)
 def create(
     name: str,
     output: Path | None,
@@ -154,13 +194,72 @@ def create(
     db_max_overflow: int,
     ai_agent: bool,
     ai_framework: str,
+    # New optional features
+    redis: bool,
+    caching: bool,
+    rate_limiting: bool,
+    admin_panel: bool,
+    websockets: bool,
+    task_queue: str,
+    oauth_google: bool,
+    session_management: bool,
+    kubernetes: bool,
+    ci: str,
+    sentry: bool,
+    prometheus: bool,
+    file_storage: bool,
+    webhooks: bool,
+    python_version: str,
+    i18n: bool,
+    preset: str | None,
 ) -> None:
     """Create a new FastAPI project with specified options.
 
     NAME is the project name (e.g., my_project)
     """
     try:
-        if minimal:
+        # Handle presets first
+        if preset == "production":
+            config = ProjectConfig(
+                project_name=name,
+                database=DatabaseType.POSTGRESQL,
+                auth=AuthType.JWT,
+                enable_logfire=True,
+                enable_redis=True,
+                enable_caching=True,
+                enable_rate_limiting=True,
+                enable_sentry=True,
+                enable_prometheus=True,
+                enable_docker=True,
+                enable_kubernetes=True,
+                ci_type=CIType.GITHUB,
+                generate_env=not no_env,
+                include_example_crud=True,
+                frontend=FrontendType(frontend),
+                backend_port=backend_port,
+                frontend_port=frontend_port,
+                python_version=python_version,
+            )
+        elif preset == "ai-agent":
+            config = ProjectConfig(
+                project_name=name,
+                database=DatabaseType.POSTGRESQL,
+                auth=AuthType.JWT,
+                enable_logfire=True,
+                enable_redis=True,
+                enable_ai_agent=True,
+                ai_framework=AIFrameworkType(ai_framework),
+                enable_websockets=True,
+                enable_conversation_persistence=True,
+                enable_docker=True,
+                ci_type=CIType.GITHUB,
+                generate_env=not no_env,
+                frontend=FrontendType(frontend),
+                backend_port=backend_port,
+                frontend_port=frontend_port,
+                python_version=python_version,
+            )
+        elif minimal:
             config = ProjectConfig(
                 project_name=name,
                 database=DatabaseType.NONE,
@@ -180,8 +279,10 @@ def create(
                 frontend=FrontendType(frontend),
                 backend_port=backend_port,
                 frontend_port=frontend_port,
+                python_version=python_version,
             )
         else:
+            # Full custom configuration with all options
             config = ProjectConfig(
                 project_name=name,
                 database=DatabaseType(database),
@@ -197,15 +298,36 @@ def create(
                 db_max_overflow=db_max_overflow,
                 enable_ai_agent=ai_agent,
                 ai_framework=AIFrameworkType(ai_framework),
+                # New options
+                enable_redis=redis,
+                enable_caching=caching,
+                enable_rate_limiting=rate_limiting,
+                enable_admin_panel=admin_panel,
+                enable_websockets=websockets,
+                background_tasks=BackgroundTaskType(task_queue),
+                oauth_provider=OAuthProvider.GOOGLE if oauth_google else OAuthProvider.NONE,
+                enable_session_management=session_management,
+                enable_kubernetes=kubernetes,
+                ci_type=CIType(ci),
+                enable_sentry=sentry,
+                enable_prometheus=prometheus,
+                enable_file_storage=file_storage,
+                enable_webhooks=webhooks,
+                python_version=python_version,
+                enable_i18n=i18n,
             )
 
         console.print(f"[cyan]Creating project:[/] {name}")
+        if preset:
+            console.print(f"[dim]Preset: {preset}[/]")
         console.print(f"[dim]Database: {config.database.value}[/]")
         console.print(f"[dim]Auth: {config.auth.value}[/]")
         if config.frontend != FrontendType.NONE:
             console.print(f"[dim]Frontend: {config.frontend.value}[/]")
         if config.enable_ai_agent:
             console.print(f"[dim]AI Agent: {config.ai_framework.value}[/]")
+        if config.background_tasks != BackgroundTaskType.NONE:
+            console.print(f"[dim]Task Queue: {config.background_tasks.value}[/]")
         console.print()
 
         project_path = generate_project(config, output)
@@ -225,50 +347,75 @@ def templates() -> None:
     console.print("[bold cyan]Available Options[/]")
     console.print()
 
+    console.print("[bold]Presets:[/]")
+    console.print("  --preset production   Full production setup (Redis, Sentry, K8s, etc.)")
+    console.print("  --preset ai-agent     AI agent with WebSocket streaming")
+    console.print("  --minimal             Minimal project (no extras)")
+    console.print()
+
     console.print("[bold]Databases:[/]")
-    console.print("  - postgresql  PostgreSQL with asyncpg (async)")
-    console.print("  - mongodb     MongoDB with Motor (async)")
-    console.print("  - sqlite      SQLite with SQLAlchemy (sync)")
-    console.print("  - none        No database")
+    console.print("  --database postgresql  PostgreSQL with asyncpg (async)")
+    console.print("  --database mongodb     MongoDB with Motor (async)")
+    console.print("  --database sqlite      SQLite with SQLAlchemy (sync)")
+    console.print("  --database none        No database")
     console.print()
 
     console.print("[bold]Authentication:[/]")
-    console.print("  - jwt         JWT + User Management")
-    console.print("  - api_key     API Key (header-based)")
-    console.print("  - both        JWT with API Key fallback")
-    console.print("  - none        No authentication")
+    console.print("  --auth jwt         JWT + User Management")
+    console.print("  --auth api_key     API Key (header-based)")
+    console.print("  --auth both        JWT with API Key fallback")
+    console.print("  --auth none        No authentication")
+    console.print("  --oauth-google     Enable Google OAuth")
+    console.print("  --session-management  Enable session management")
     console.print()
 
     console.print("[bold]Background Tasks:[/]")
-    console.print("  - none        FastAPI BackgroundTasks only")
-    console.print("  - celery      Celery (classic)")
-    console.print("  - taskiq      Taskiq (async-native)")
-    console.print("  - arq         ARQ (lightweight)")
+    console.print("  --task-queue none      FastAPI BackgroundTasks only")
+    console.print("  --task-queue celery    Celery (classic)")
+    console.print("  --task-queue taskiq    Taskiq (async-native)")
+    console.print("  --task-queue arq       ARQ (lightweight)")
     console.print()
 
     console.print("[bold]Frontend:[/]")
-    console.print("  - none        API only (no frontend)")
-    console.print("  - nextjs      Next.js 15 (App Router, TypeScript, Bun)")
+    console.print("  --frontend none        API only (no frontend)")
+    console.print("  --frontend nextjs      Next.js 15 (App Router, TypeScript, Bun)")
+    console.print("  --i18n                 Enable internationalization")
     console.print()
 
-    console.print("[bold]AI Frameworks:[/]")
-    console.print("  - pydantic_ai  PydanticAI (recommended)")
-    console.print("  - langchain    LangChain")
+    console.print("[bold]AI Agent:[/]")
+    console.print("  --ai-agent                  Enable AI agent")
+    console.print("  --ai-framework pydantic_ai  PydanticAI (recommended)")
+    console.print("  --ai-framework langchain    LangChain")
     console.print()
 
-    console.print("[bold]Optional Features:[/]")
-    console.print("  - Logfire integration")
-    console.print("  - Redis (caching/sessions)")
-    console.print("  - Rate limiting (slowapi)")
-    console.print("  - Pagination (fastapi-pagination)")
-    console.print("  - Admin Panel (SQLAdmin)")
-    console.print("  - WebSockets")
-    console.print("  - File Storage (S3/MinIO)")
-    console.print("  - AI Agent (--ai-agent --ai-framework pydantic_ai|langchain)")
-    console.print("  - Example CRUD (Item model)")
-    console.print("  - Docker + docker-compose")
-    console.print("  - GitHub Actions / GitLab CI")
-    console.print("  - Kubernetes manifests")
+    console.print("[bold]Integrations:[/]")
+    console.print("  --redis            Enable Redis")
+    console.print("  --caching          Enable caching (requires --redis)")
+    console.print("  --rate-limiting    Enable rate limiting")
+    console.print("  --admin-panel      Enable admin panel (SQLAdmin)")
+    console.print("  --websockets       Enable WebSocket support")
+    console.print("  --file-storage     Enable S3/MinIO file storage")
+    console.print("  --webhooks         Enable webhooks support")
+    console.print()
+
+    console.print("[bold]Observability:[/]")
+    console.print("  --no-logfire       Disable Logfire integration")
+    console.print("  --sentry           Enable Sentry error tracking")
+    console.print("  --prometheus       Enable Prometheus metrics")
+    console.print()
+
+    console.print("[bold]DevOps:[/]")
+    console.print("  --no-docker        Disable Docker files")
+    console.print("  --kubernetes       Generate Kubernetes manifests")
+    console.print("  --ci github        GitHub Actions (default)")
+    console.print("  --ci gitlab        GitLab CI")
+    console.print("  --ci none          No CI/CD")
+    console.print()
+
+    console.print("[bold]Other:[/]")
+    console.print("  --python-version 3.11|3.12|3.13  Python version")
+    console.print("  --no-example-crud  Skip example CRUD endpoint")
+    console.print("  --no-env           Skip .env file generation")
 
 
 def main() -> None:

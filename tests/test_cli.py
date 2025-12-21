@@ -7,7 +7,16 @@ import pytest
 from click.testing import CliRunner
 
 from fastapi_gen.cli import cli, create, main, new, templates
-from fastapi_gen.config import AuthType, CIType, DatabaseType, FrontendType, ProjectConfig
+from fastapi_gen.config import (
+    AIFrameworkType,
+    AuthType,
+    BackgroundTaskType,
+    CIType,
+    DatabaseType,
+    FrontendType,
+    OAuthProvider,
+    ProjectConfig,
+)
 
 
 @pytest.fixture
@@ -346,6 +355,403 @@ class TestCreateCommand:
         assert config.enable_ai_agent is True
         assert config.ai_framework.value == "langchain"
 
+    # Tests for new CLI options
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_preset_production(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with production preset."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--preset", "production"])
+
+        assert result.exit_code == 0
+        assert "Preset: production" in result.output
+        config = mock_generate.call_args[0][0]
+        assert config.database == DatabaseType.POSTGRESQL
+        assert config.enable_redis is True
+        assert config.enable_caching is True
+        assert config.enable_rate_limiting is True
+        assert config.enable_sentry is True
+        assert config.enable_prometheus is True
+        assert config.enable_kubernetes is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_preset_ai_agent(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with ai-agent preset."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--preset", "ai-agent"])
+
+        assert result.exit_code == 0
+        assert "Preset: ai-agent" in result.output
+        config = mock_generate.call_args[0][0]
+        assert config.enable_ai_agent is True
+        assert config.enable_websockets is True
+        assert config.enable_conversation_persistence is True
+        assert config.enable_redis is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_redis(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Redis enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--redis"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_redis is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_caching(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with caching enabled (requires Redis)."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--redis", "--caching"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_redis is True
+        assert config.enable_caching is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_rate_limiting(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with rate limiting enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--rate-limiting"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_rate_limiting is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_admin_panel(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with admin panel enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--admin-panel"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_admin_panel is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_websockets(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with WebSocket support."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--websockets"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_websockets is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_task_queue_celery(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Celery task queue."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--task-queue", "celery"])
+
+        assert result.exit_code == 0
+        assert "Task Queue: celery" in result.output
+        config = mock_generate.call_args[0][0]
+        assert config.background_tasks == BackgroundTaskType.CELERY
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_task_queue_taskiq(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Taskiq task queue."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--task-queue", "taskiq"])
+
+        assert result.exit_code == 0
+        assert "Task Queue: taskiq" in result.output
+        config = mock_generate.call_args[0][0]
+        assert config.background_tasks == BackgroundTaskType.TASKIQ
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_oauth_google(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Google OAuth."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--oauth-google"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.oauth_provider == OAuthProvider.GOOGLE
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_session_management(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with session management."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--session-management"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_session_management is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_kubernetes(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Kubernetes manifests."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--kubernetes"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_kubernetes is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_ci_gitlab(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with GitLab CI."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--ci", "gitlab"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.ci_type == CIType.GITLAB
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_sentry(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Sentry enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--sentry"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_sentry is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_prometheus(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with Prometheus enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--prometheus"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_prometheus is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_file_storage(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with file storage enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--file-storage"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_file_storage is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_webhooks(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with webhooks enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--webhooks"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_webhooks is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_python_version(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with specific Python version."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--python-version", "3.13"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.python_version == "3.13"
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_i18n(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with i18n enabled."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(create, ["myproject", "--i18n"])
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_i18n is True
+
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_create_with_multiple_options(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test create with multiple options combined."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(
+            create,
+            [
+                "myproject",
+                "--redis",
+                "--caching",
+                "--rate-limiting",
+                "--admin-panel",
+                "--websockets",
+                "--task-queue",
+                "taskiq",
+                "--sentry",
+                "--prometheus",
+            ],
+        )
+
+        assert result.exit_code == 0
+        config = mock_generate.call_args[0][0]
+        assert config.enable_redis is True
+        assert config.enable_caching is True
+        assert config.enable_rate_limiting is True
+        assert config.enable_admin_panel is True
+        assert config.enable_websockets is True
+        assert config.background_tasks == BackgroundTaskType.TASKIQ
+        assert config.enable_sentry is True
+        assert config.enable_prometheus is True
+
 
 class TestTemplatesCommand:
     """Tests for 'templates' command."""
@@ -355,15 +761,40 @@ class TestTemplatesCommand:
         result = runner.invoke(templates, [])
 
         assert result.exit_code == 0
+        # Presets
+        assert "Presets" in result.output
+        assert "--preset production" in result.output
+        assert "--preset ai-agent" in result.output
+        assert "--minimal" in result.output
+        # Databases
         assert "Databases" in result.output
         assert "postgresql" in result.output
         assert "mongodb" in result.output
+        # Authentication
         assert "Authentication" in result.output
         assert "jwt" in result.output
         assert "api_key" in result.output
+        assert "--oauth-google" in result.output
+        assert "--session-management" in result.output
+        # Background Tasks
         assert "Background Tasks" in result.output
         assert "celery" in result.output
         assert "taskiq" in result.output
+        # Integrations
+        assert "Integrations" in result.output
+        assert "--redis" in result.output
+        assert "--caching" in result.output
+        assert "--rate-limiting" in result.output
+        assert "--admin-panel" in result.output
+        # Observability
+        assert "Observability" in result.output
+        assert "--sentry" in result.output
+        assert "--prometheus" in result.output
+        # DevOps
+        assert "DevOps" in result.output
+        assert "--kubernetes" in result.output
+        assert "--ci github" in result.output
+        assert "--ci gitlab" in result.output
 
 
 class TestMainEntrypoint:

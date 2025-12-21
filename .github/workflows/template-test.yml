@@ -232,6 +232,18 @@ jobs:
             --auth jwt \
             -o /tmp/projects
 
+      - name: Debug - List generated files
+        working-directory: /tmp/projects/test_frontend/frontend
+        run: |
+          echo "=== tsconfig.json ==="
+          cat tsconfig.json
+          echo ""
+          echo "=== src/lib directory ==="
+          ls -la src/lib/
+          echo ""
+          echo "=== src/lib/utils.ts (first 10 lines) ==="
+          head -10 src/lib/utils.ts || echo "File not found"
+
       - name: Install frontend dependencies
         working-directory: /tmp/projects/test_frontend/frontend
         run: bun install

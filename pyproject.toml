@@ -1,5 +1,5 @@
 [project]
-name = "fastapi-gen"
+name = "fastapi-fullstack"
 version = "0.1.0"
 description = "Interactive FastAPI project generator with Logfire observability"
 readme = "README.md"

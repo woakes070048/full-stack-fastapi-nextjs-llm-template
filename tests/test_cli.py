@@ -318,9 +318,7 @@ class TestCreateCommand:
         """Test create with AI agent (PydanticAI)."""
         mock_generate.return_value = tmp_path / "myproject"
 
-        result = runner.invoke(
-            create, ["myproject", "--ai-agent", "--ai-framework", "pydantic_ai"]
-        )
+        result = runner.invoke(create, ["myproject", "--ai-agent", "--ai-framework", "pydantic_ai"])
 
         assert result.exit_code == 0
         assert "AI Agent: pydantic_ai" in result.output
@@ -340,9 +338,7 @@ class TestCreateCommand:
         """Test create with AI agent (LangChain)."""
         mock_generate.return_value = tmp_path / "myproject"
 
-        result = runner.invoke(
-            create, ["myproject", "--ai-agent", "--ai-framework", "langchain"]
-        )
+        result = runner.invoke(create, ["myproject", "--ai-agent", "--ai-framework", "langchain"])
 
         assert result.exit_code == 0
         assert "AI Agent: langchain" in result.output

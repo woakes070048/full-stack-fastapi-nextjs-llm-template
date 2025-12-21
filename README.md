@@ -100,13 +100,29 @@ This template gives you all of that out of the box, with **20+ configurable inte
 
 ### Screenshots
 
+#### Chat Interface
 <p align="center">
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/docs_2.png" alt="API Documentation"><br><br>
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/admin.png" alt="Admin Panel"><br><br>
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/chat_view_light.png" alt="Chat Interface - Light Mode"><br><br>
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/chat_view_dark.png" alt="Chat Interface - Dark Mode"><br><br>
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/login.png" alt="Login Page"><br><br>
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/register.png" alt="Register Page">
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/new_chat_light.png" alt="Chat Interface - Light Mode"><br><br>
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/new_chat_dark.png" alt="Chat Interface - Dark Mode">
+</p>
+
+#### Authentication
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/new_register.png" alt="Register Page with OAuth">
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/new_login.png" alt="Login Page with OAuth"><br><br>
+</p>
+
+#### Observability & Monitoring
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/logfire.png" alt="Logfire Observability Dashboard"><br><br>
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/langsmith.png" alt="LangSmith Tracing Dashboard"><br><br>
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/flower.png" alt="Celery Flower Task Monitoring">
+</p>
+
+#### Admin & API
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/admin.png" alt="SQLAdmin Panel"><br><br>
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-fastapi-nextjs-llm-template/main/assets/docs_2.png" alt="API Documentation">
 </p>
 
 ---

@@ -49,7 +49,9 @@ def prompt_basic_info() -> dict[str, str]:
     raw_project_name = _check_cancelled(
         questionary.text(
             "Project name:",
-            validate=lambda x: len(x) > 0 and x[0].isalpha() and x.replace("_", "").replace(" ", "").isalnum(),
+            validate=lambda x: len(x) > 0
+            and x[0].isalpha()
+            and x.replace("_", "").replace(" ", "").isalnum(),
         ).ask()
     )
     project_name = raw_project_name.lower().replace(" ", "_").replace("-", "_")

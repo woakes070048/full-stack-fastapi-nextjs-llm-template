@@ -19,6 +19,8 @@ from fastapi_gen.config import (
 )
 from fastapi_gen.prompts import (
     _check_cancelled,
+    _normalize_project_name,
+    _validate_project_name,
     confirm_generation,
     prompt_admin_config,
     prompt_auth,
@@ -55,6 +57,84 @@ class TestCheckCancelled:
             _check_cancelled(None)
 
 
+class TestValidateProjectName:
+    """Tests for _validate_project_name helper."""
+
+    def test_valid_lowercase_name(self) -> None:
+        """Test valid lowercase name returns True."""
+        assert _validate_project_name("myproject") is True
+        assert _validate_project_name("my_project") is True
+        assert _validate_project_name("project123") is True
+
+    def test_valid_uppercase_name(self) -> None:
+        """Test valid uppercase name returns True (will be normalized later)."""
+        assert _validate_project_name("MyProject") is True
+        assert _validate_project_name("MY_PROJECT") is True
+
+    def test_valid_name_with_spaces(self) -> None:
+        """Test valid name with spaces returns True."""
+        assert _validate_project_name("my project") is True
+        assert _validate_project_name("My Project") is True
+
+    def test_valid_name_with_dashes(self) -> None:
+        """Test valid name with dashes returns True."""
+        assert _validate_project_name("my-project") is True
+        assert _validate_project_name("My-Project") is True
+
+    def test_invalid_empty_name(self) -> None:
+        """Test empty name returns error message."""
+        result = _validate_project_name("")
+        assert result == "Project name cannot be empty"
+
+    def test_invalid_starts_with_number(self) -> None:
+        """Test name starting with number returns error message."""
+        result = _validate_project_name("123project")
+        assert result == "Project name must start with a letter"
+
+    def test_invalid_starts_with_underscore(self) -> None:
+        """Test name starting with underscore returns error message."""
+        result = _validate_project_name("_project")
+        assert result == "Project name must start with a letter"
+
+    def test_invalid_special_characters(self) -> None:
+        """Test name with special characters returns error message."""
+        result = _validate_project_name("my@project")
+        assert "can only contain" in result
+        result = _validate_project_name("my.project")
+        assert "can only contain" in result
+        result = _validate_project_name("my/project")
+        assert "can only contain" in result
+
+
+class TestNormalizeProjectName:
+    """Tests for _normalize_project_name helper."""
+
+    def test_lowercase_conversion(self) -> None:
+        """Test uppercase is converted to lowercase."""
+        assert _normalize_project_name("MyProject") == "myproject"
+        assert _normalize_project_name("MY_PROJECT") == "my_project"
+
+    def test_space_to_underscore(self) -> None:
+        """Test spaces are converted to underscores."""
+        assert _normalize_project_name("my project") == "my_project"
+        assert _normalize_project_name("My Project") == "my_project"
+
+    def test_dash_to_underscore(self) -> None:
+        """Test dashes are converted to underscores."""
+        assert _normalize_project_name("my-project") == "my_project"
+        assert _normalize_project_name("My-Project") == "my_project"
+
+    def test_mixed_conversion(self) -> None:
+        """Test mixed case, spaces, and dashes are all normalized."""
+        assert _normalize_project_name("My Cool-Project") == "my_cool_project"
+        assert _normalize_project_name("MY COOL-PROJECT") == "my_cool_project"
+
+    def test_already_normalized(self) -> None:
+        """Test already normalized name is unchanged."""
+        assert _normalize_project_name("my_project") == "my_project"
+        assert _normalize_project_name("project123") == "project123"
+
+
 class TestShowHeader:
     """Tests for show_header function."""
 
@@ -87,6 +167,54 @@ class TestPromptBasicInfo:
             "author_name": "John Doe",
             "author_email": "john@example.com",
         }
+
+    @patch("fastapi_gen.prompts.questionary")
+    def test_normalizes_project_name_with_uppercase(self, mock_questionary: MagicMock) -> None:
+        """Test project name with uppercase is normalized to lowercase."""
+        mock_text = MagicMock()
+        mock_text.ask.side_effect = [
+            "MyProject",
+            "My description",
+            "John Doe",
+            "john@example.com",
+        ]
+        mock_questionary.text.return_value = mock_text
+
+        result = prompt_basic_info()
+
+        assert result["project_name"] == "myproject"
+
+    @patch("fastapi_gen.prompts.questionary")
+    def test_normalizes_project_name_with_spaces(self, mock_questionary: MagicMock) -> None:
+        """Test project name with spaces is normalized to underscores."""
+        mock_text = MagicMock()
+        mock_text.ask.side_effect = [
+            "My Project",
+            "My description",
+            "John Doe",
+            "john@example.com",
+        ]
+        mock_questionary.text.return_value = mock_text
+
+        result = prompt_basic_info()
+
+        assert result["project_name"] == "my_project"
+
+    @patch("fastapi_gen.prompts.questionary")
+    def test_normalizes_project_name_with_dashes(self, mock_questionary: MagicMock) -> None:
+        """Test project name with dashes is normalized to underscores."""
+        mock_text = MagicMock()
+        mock_text.ask.side_effect = [
+            "my-project",
+            "My description",
+            "John Doe",
+            "john@example.com",
+        ]
+        mock_questionary.text.return_value = mock_text
+
+        result = prompt_basic_info()
+
+        assert result["project_name"] == "my_project"
 
     @patch("fastapi_gen.prompts.questionary")
     def test_raises_on_cancel(self, mock_questionary: MagicMock) -> None:

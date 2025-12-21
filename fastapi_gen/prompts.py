@@ -41,6 +41,27 @@ def _check_cancelled(value: Any) -> Any:
     return value
 
 
+def _validate_project_name(name: str) -> bool | str:
+    """Validate project name input.
+
+    Returns True if valid, or an error message string if invalid.
+    Allows alphanumeric characters, underscores, spaces, and dashes.
+    First character must be a letter.
+    """
+    if not name:
+        return "Project name cannot be empty"
+    if not name[0].isalpha():
+        return "Project name must start with a letter"
+    if not all(c.isalnum() or c in "_- " for c in name):
+        return "Project name can only contain letters, numbers, underscores, spaces, and dashes"
+    return True
+
+
+def _normalize_project_name(name: str) -> str:
+    """Normalize project name to lowercase with underscores."""
+    return name.lower().replace(" ", "_").replace("-", "_")
+
+
 def prompt_basic_info() -> dict[str, str]:
     """Prompt for basic project information."""
     console.print("[bold cyan]Basic Information[/]")
@@ -49,12 +70,15 @@ def prompt_basic_info() -> dict[str, str]:
     raw_project_name = _check_cancelled(
         questionary.text(
             "Project name:",
-            validate=lambda x: len(x) > 0
-            and x[0].isalpha()
-            and x.replace("_", "").replace(" ", "").isalnum(),
+            validate=_validate_project_name,
         ).ask()
     )
-    project_name = raw_project_name.lower().replace(" ", "_").replace("-", "_")
+    project_name = _normalize_project_name(raw_project_name)
+
+    # Show converted name if it differs from input
+    if project_name != raw_project_name:
+        console.print(f"  [dim]→ Will be saved as:[/] [cyan]{project_name}[/]")
+        console.print()
 
     project_description = _check_cancelled(
         questionary.text(

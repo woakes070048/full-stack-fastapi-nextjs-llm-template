@@ -78,7 +78,7 @@ async def liveness_probe() -> dict[str, Any]:
     )
 
 
-@router.get("/health/ready")
+@router.get("/health/ready", response_model=None)
 async def readiness_probe(
 {%- if cookiecutter.use_database %}
     db: DBSession,
@@ -204,7 +204,7 @@ async def readiness_probe(
 
 
 # Backward compatibility - keep /ready endpoint
-@router.get("/ready")
+@router.get("/ready", response_model=None)
 async def readiness_check(
 {%- if cookiecutter.use_database %}
     db: DBSession,

@@ -126,16 +126,29 @@ class TestSeedCommand:
 {%- endif %}
 
 
-class TestExampleCommand:
-    """Tests for the example command."""
+class TestHelloCommand:
+    """Tests for the hello command."""
 
-    def test_example_command_runs(self):
-        """Test example command executes."""
-        from app.commands.example import example
+    def test_hello_command_runs(self):
+        """Test hello command executes."""
+        from app.commands.example import hello
 
         runner = CliRunner()
-        result = runner.invoke(example)
+        result = runner.invoke(hello)
         assert result.exit_code == 0
+        assert "Hello" in result.output
+
+    def test_hello_command_with_name(self):
+        """Test hello command with --name option."""
+        from app.commands.example import hello
+
+        runner = CliRunner()
+        result = runner.invoke(hello, ["--name", "Alice"])
+        assert result.exit_code == 0
+        assert "Alice" in result.output
+
+
+{%- if cookiecutter.use_database %}
 
 
 class TestCleanupCommand:
@@ -150,10 +163,11 @@ class TestCleanupCommand:
         assert result.exit_code == 0
         assert "[DRY RUN]" in result.output
 
-    def test_cleanup_with_older_than(self):
-        """Test cleanup command with --older-than option."""
+    def test_cleanup_with_days_option(self):
+        """Test cleanup command with --days option."""
         from app.commands.cleanup import cleanup
 
         runner = CliRunner()
-        result = runner.invoke(cleanup, ["--dry-run", "--older-than", "7"])
+        result = runner.invoke(cleanup, ["--dry-run", "--days", "7"])
         assert result.exit_code == 0
+{%- endif %}

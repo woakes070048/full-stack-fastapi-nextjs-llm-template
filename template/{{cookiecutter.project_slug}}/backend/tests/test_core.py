@@ -26,9 +26,11 @@ class TestSettings:
         """Test debug mode has default value."""
         assert isinstance(settings.DEBUG, bool)
 
+{%- if cookiecutter.enable_cors %}
     def test_cors_origins_is_list(self):
         """Test CORS origins is a list."""
         assert isinstance(settings.CORS_ORIGINS, list)
+{%- endif %}
 
 
 class TestExceptions:
@@ -97,6 +99,9 @@ class TestMiddleware:
         assert RequestIDMiddleware is not None
 
 
+{%- if cookiecutter.enable_rate_limiting %}
+
+
 class TestRateLimit:
     """Tests for rate limiting."""
 
@@ -105,6 +110,7 @@ class TestRateLimit:
         from app.core.rate_limit import limiter
 
         assert limiter is not None
+{%- endif %}
 
 
 {%- if cookiecutter.enable_logfire %}

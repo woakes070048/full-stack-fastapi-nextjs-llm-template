@@ -1,6 +1,7 @@
 """Application configuration using Pydantic BaseSettings."""
+{% if cookiecutter.use_database -%}
 # ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
-
+{% endif %}
 from pathlib import Path
 from typing import Literal
 
@@ -35,7 +36,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "{{ cookiecutter.project_name }}"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
-    ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+    ENVIRONMENT: Literal["development", "local", "staging", "production"] = "local"
 
 {%- if cookiecutter.enable_logfire %}
 

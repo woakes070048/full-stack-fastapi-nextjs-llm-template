@@ -32,6 +32,7 @@ class MockUser:
         full_name="Test User",
         is_active=True,
         is_superuser=False,
+        role="admin",
     ):
 {%- if cookiecutter.use_postgresql %}
         self.id = id or uuid4()
@@ -42,9 +43,16 @@ class MockUser:
         self.full_name = full_name
         self.is_active = is_active
         self.is_superuser = is_superuser
+        self.role = role
         self.hashed_password = "hashed"
         self.created_at = datetime.now(UTC)
         self.updated_at = datetime.now(UTC)
+
+    def has_role(self, role) -> bool:
+        """Check if user has the specified role."""
+        if hasattr(role, "value"):
+            return self.role == role.value
+        return self.role == role
 
 
 @pytest.fixture

@@ -1,5 +1,7 @@
 """Repository layer for database operations."""
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite or cookiecutter.use_jwt or cookiecutter.include_example_crud or cookiecutter.enable_conversation_persistence or cookiecutter.enable_webhooks %}
 # ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
 
 from app.repositories.base import BaseRepository

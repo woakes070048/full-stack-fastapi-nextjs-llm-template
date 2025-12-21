@@ -6,7 +6,6 @@ This command is useful for development and testing.
 Uses random data generation - install faker for better data:
     uv add faker --group dev
 """
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 
 import asyncio
 import random

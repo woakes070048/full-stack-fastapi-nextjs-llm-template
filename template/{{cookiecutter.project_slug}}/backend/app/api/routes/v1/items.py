@@ -11,7 +11,6 @@ The endpoints are:
 - PATCH /items/{item_id} - Update an item
 - DELETE /items/{item_id} - Delete an item
 """
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 {%- if cookiecutter.use_postgresql %}
 
 from uuid import UUID

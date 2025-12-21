@@ -3,8 +3,10 @@
 Services orchestrate business operations, using repositories for data access
 and raising domain exceptions for error handling.
 """
-# ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
 {%- set services = [] %}
+{%- if cookiecutter.use_jwt or cookiecutter.include_example_crud or cookiecutter.enable_conversation_persistence or cookiecutter.enable_webhooks %}
+# ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 {%- if cookiecutter.use_jwt %}
 {%- set _ = services.append("UserService") %}
 

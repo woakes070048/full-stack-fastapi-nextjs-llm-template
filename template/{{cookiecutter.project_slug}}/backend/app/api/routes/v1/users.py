@@ -1,6 +1,5 @@
 {%- if cookiecutter.use_jwt %}
 """User management routes."""
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 
 from typing import Annotated
 {%- if cookiecutter.use_postgresql %}

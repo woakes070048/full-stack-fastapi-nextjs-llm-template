@@ -1,6 +1,5 @@
 {%- if cookiecutter.use_jwt %}
 """Tests for authentication routes."""
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock

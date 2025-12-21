@@ -1,5 +1,7 @@
 """API v1 router aggregation."""
+{%- if cookiecutter.use_jwt or cookiecutter.enable_oauth or cookiecutter.include_example_crud or cookiecutter.enable_conversation_persistence or cookiecutter.enable_webhooks or cookiecutter.enable_websockets or cookiecutter.enable_ai_agent %}
 # ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 
 from fastapi import APIRouter
 

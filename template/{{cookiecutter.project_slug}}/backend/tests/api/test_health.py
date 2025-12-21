@@ -1,5 +1,4 @@
 """Health endpoint tests."""
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 {%- if cookiecutter.enable_redis or cookiecutter.use_postgresql or cookiecutter.use_mongodb %}
 
 from unittest.mock import AsyncMock

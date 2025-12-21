@@ -4,7 +4,6 @@ Cleanup old or stale data from the database.
 
 This command is useful for maintenance tasks.
 """
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 
 import asyncio
 from datetime import datetime, timedelta

@@ -4,7 +4,6 @@
 This module demonstrates testing patterns for CRUD endpoints.
 You can use it as a template for testing your own endpoints.
 """
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock

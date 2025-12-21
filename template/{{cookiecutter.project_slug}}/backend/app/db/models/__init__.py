@@ -1,5 +1,7 @@
 """Database models."""
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
 # ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
 {%- set models = [] %}
 {%- if cookiecutter.use_jwt %}

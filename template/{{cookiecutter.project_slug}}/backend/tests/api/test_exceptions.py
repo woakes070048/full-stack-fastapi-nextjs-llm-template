@@ -1,5 +1,7 @@
 """Exception handler tests."""
+{%- if cookiecutter.use_jwt or cookiecutter.use_api_key %}
 # ruff: noqa: I001, E402 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 
 import pytest
 from httpx import AsyncClient

@@ -1,6 +1,5 @@
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
 """Alembic migration environment."""
-# ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
 
 from logging.config import fileConfig
 

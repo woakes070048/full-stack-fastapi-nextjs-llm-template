@@ -1,6 +1,8 @@
 {%- if cookiecutter.use_jwt %}
 """Tests for user routes."""
+{%- if cookiecutter.use_database or cookiecutter.enable_redis %}
 # ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock

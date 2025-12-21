@@ -5,7 +5,9 @@ Provides Kubernetes-compatible health check endpoints:
 - /health/live - Detailed liveness probe
 - /health/ready - Readiness probe with dependency checks
 """
+{%- if cookiecutter.use_database or cookiecutter.enable_redis %}
 # ruff: noqa: I001 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 
 from datetime import UTC, datetime
 from typing import Any

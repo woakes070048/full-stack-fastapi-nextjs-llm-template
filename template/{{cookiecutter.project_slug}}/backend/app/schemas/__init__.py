@@ -1,6 +1,8 @@
 """Pydantic schemas."""
-# ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
 {%- set schemas = [] %}
+{%- if cookiecutter.use_jwt or cookiecutter.include_example_crud or cookiecutter.enable_conversation_persistence or cookiecutter.enable_webhooks %}
+# ruff: noqa: I001, RUF022 - Imports structured for Jinja2 template conditionals
+{%- endif %}
 {%- if cookiecutter.use_jwt %}
 {%- set _ = schemas.extend(["UserCreate", "UserRead", "UserUpdate", "Token", "TokenPayload"]) %}
 

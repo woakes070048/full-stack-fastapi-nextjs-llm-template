@@ -25,6 +25,12 @@
   <a href="#-documentation">Documentation</a>
 </p>
 
+## Related Projects
+
+> **Building advanced AI agents?** Check out [pydantic-deep](https://github.com/vstorm-co/pydantic-deepagents) - a deep agent framework built on pydantic-ai with planning, filesystem, and subagent capabilities.
+
+---
+
 ## 🎯 Why This Template
 
 Building AI/LLM applications requires more than just an API wrapper. You need:

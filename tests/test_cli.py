@@ -149,6 +149,61 @@ class TestNewCommand:
         assert "Error" in result.output
         assert "Something went wrong" in result.output
 
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_new_with_output_dir(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test new command accepts --output option."""
+        mock_generate.return_value = tmp_path / "myproject"
+
+        result = runner.invoke(new, ["--no-input", "--name", "myproject", "-o", str(tmp_path)])
+
+        assert result.exit_code == 0
+        mock_generate.assert_called_once()
+        # Verify output path was passed to generate_project
+        call_args = mock_generate.call_args
+        assert call_args[0][1] == tmp_path
+
+    def test_new_output_dir_must_exist(self, runner: CliRunner) -> None:
+        """Test that non-existent output dir fails validation."""
+        result = runner.invoke(
+            new, ["--no-input", "--name", "myproject", "-o", "/nonexistent/path"]
+        )
+        assert result.exit_code != 0
+
+    @patch("fastapi_gen.cli.run_interactive_prompts")
+    @patch("fastapi_gen.cli.show_summary")
+    @patch("fastapi_gen.cli.confirm_generation")
+    @patch("fastapi_gen.cli.generate_project")
+    @patch("fastapi_gen.cli.post_generation_tasks")
+    def test_new_interactive_with_output_dir(
+        self,
+        mock_post_gen: MagicMock,
+        mock_generate: MagicMock,
+        mock_confirm: MagicMock,
+        mock_summary: MagicMock,
+        mock_prompts: MagicMock,
+        runner: CliRunner,
+        tmp_path: Path,
+    ) -> None:
+        """Test new command in interactive mode with output dir."""
+        mock_prompts.return_value = ProjectConfig(project_name="testproject")
+        mock_confirm.return_value = True
+        mock_generate.return_value = tmp_path / "testproject"
+
+        result = runner.invoke(new, ["--output", str(tmp_path)])
+
+        assert result.exit_code == 0
+        mock_generate.assert_called_once()
+        # Verify output path was passed
+        call_args = mock_generate.call_args
+        assert call_args[0][1] == tmp_path
+
 
 class TestCreateCommand:
     """Tests for 'create' command."""

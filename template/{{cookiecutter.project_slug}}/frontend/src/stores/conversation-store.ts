@@ -39,19 +39,19 @@ export const useConversationStore = create<ConversationState>((set) => ({
 
   addConversation: (conversation) =>
     set((state) => ({
-      conversations: [conversation, ...state.conversations],
+      conversations: [conversation, ...(state.conversations || [])],
     })),
 
   updateConversation: (id, updates) =>
     set((state) => ({
-      conversations: state.conversations.map((conv) =>
+      conversations: (state.conversations || []).map((conv) =>
         conv.id === id ? { ...conv, ...updates } : conv
       ),
     })),
 
   removeConversation: (id) =>
     set((state) => ({
-      conversations: state.conversations.filter((conv) => conv.id !== id),
+      conversations: (state.conversations || []).filter((conv) => conv.id !== id),
       currentConversationId:
         state.currentConversationId === id ? null : state.currentConversationId,
     })),
@@ -62,7 +62,7 @@ export const useConversationStore = create<ConversationState>((set) => ({
 
   addMessage: (message) =>
     set((state) => ({
-      currentMessages: [...state.currentMessages, message],
+      currentMessages: [...(state.currentMessages || []), message],
     })),
 
   setLoading: (loading) => set({ isLoading: loading }),

@@ -3,7 +3,7 @@
 
 import { useCallback } from "react";
 import { apiClient } from "@/lib/api-client";
-import { useConversationStore } from "@/stores";
+import { useConversationStore, useChatStore } from "@/stores";
 import type {
   Conversation,
   ConversationMessage,
@@ -39,6 +39,7 @@ export function useConversations() {
     setLoading,
     setError,
   } = useConversationStore();
+  const { clearMessages } = useChatStore();
 
   const fetchConversations = useCallback(async () => {
     setLoading(true);
@@ -90,6 +91,7 @@ export function useConversations() {
   const selectConversation = useCallback(
     async (id: string) => {
       setCurrentConversationId(id);
+      clearMessages();
       setLoading(true);
       setError(null);
       try {
@@ -105,7 +107,7 @@ export function useConversations() {
         setLoading(false);
       }
     },
-    [setCurrentConversationId, setCurrentMessages, setLoading, setError]
+    [setCurrentConversationId, clearMessages, setCurrentMessages, setLoading, setError]
   );
 
   const archiveConversation = useCallback(
@@ -150,10 +152,14 @@ export function useConversations() {
     [updateConversation, setError]
   );
 
-  const startNewChat = useCallback(() => {
-    setCurrentConversationId(null);
+  const startNewChat = useCallback(async () => {
+    clearMessages();
     setCurrentMessages([]);
-  }, [setCurrentConversationId, setCurrentMessages]);
+    const newConversation = await createConversation();
+    if (newConversation) {
+      setCurrentConversationId(newConversation.id);
+    }
+  }, [clearMessages, setCurrentMessages, createConversation, setCurrentConversationId]);
 
   return {
     conversations,

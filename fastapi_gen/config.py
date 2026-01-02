@@ -89,6 +89,7 @@ class AIFrameworkType(str, Enum):
 
     PYDANTIC_AI = "pydantic_ai"
     LANGCHAIN = "langchain"
+    LANGGRAPH = "langgraph"
 
 
 class LLMProviderType(str, Enum):
@@ -264,6 +265,12 @@ class ProjectConfig(BaseModel):
         ):
             raise ValueError("OpenRouter is not supported with LangChain")
         if (
+            self.enable_ai_agent
+            and self.ai_framework == AIFrameworkType.LANGGRAPH
+            and self.llm_provider == LLMProviderType.OPENROUTER
+        ):
+            raise ValueError("OpenRouter is not supported with LangGraph")
+        if (
             self.enable_rate_limiting
             and self.rate_limit_storage == RateLimitStorageType.REDIS
             and not self.enable_redis
@@ -345,6 +352,7 @@ class ProjectConfig(BaseModel):
             "ai_framework": self.ai_framework.value,
             "use_pydantic_ai": self.ai_framework == AIFrameworkType.PYDANTIC_AI,
             "use_langchain": self.ai_framework == AIFrameworkType.LANGCHAIN,
+            "use_langgraph": self.ai_framework == AIFrameworkType.LANGGRAPH,
             "llm_provider": self.llm_provider.value,
             "use_openai": self.llm_provider == LLMProviderType.OPENAI,
             "use_anthropic": self.llm_provider == LLMProviderType.ANTHROPIC,

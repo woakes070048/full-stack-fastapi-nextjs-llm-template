@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.11] - 2026-01-02
+
+### Added
+
+#### LangGraph ReAct Agent Support
+
+- **LangGraph as third AI framework option** alongside PydanticAI and LangChain
+- New `--ai-framework langgraph` CLI option for project creation
+- Interactive prompt includes "LangGraph (ReAct agent)" choice
+- **ReAct (Reasoning + Acting) agent pattern** with graph-based architecture:
+  - Agent node for LLM reasoning and tool decision
+  - Tools node for executing tool calls
+  - Conditional edges for tool execution loop
+  - Memory-based checkpointing for conversation continuity
+- **Full WebSocket streaming support** using `astream()` with dual modes:
+  - `messages` mode for token-level LLM streaming
+  - `updates` mode for node state changes (tool calls/results)
+- **Tool result correlation** - proper `tool_call_id` matching between calls and results
+- New template files:
+  - `app/agents/langgraph_assistant.py` - LangGraphAssistant class with run() and stream()
+  - WebSocket route implementation in `app/api/routes/v1/agent.py`
+- New cookiecutter variable: `use_langgraph`
+- Dependencies for LangGraph projects:
+  - `langchain-core>=0.3.0`
+  - `langchain-openai>=0.3.0` or `langchain-anthropic>=0.3.0`
+  - `langgraph>=0.2.0`
+  - `langgraph-checkpoint>=2.0.0`
+
+### Changed
+
+- **`AIFrameworkType` enum** extended with `LANGGRAPH` value
+- **AI framework prompt** now shows three options: PydanticAI, LangChain, LangGraph
+- **LLM provider validation** - OpenRouter not supported with LangGraph (same as LangChain)
+- **`VARIABLES.md`** updated with `use_langgraph` documentation
+- **Template `CLAUDE.md`** includes LangGraph in stack section
+
 ## [0.1.10] - 2025-12-27
 
 ### Added

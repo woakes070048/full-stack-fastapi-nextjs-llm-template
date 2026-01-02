@@ -18,6 +18,16 @@ Tools are defined in the tools/ subdirectory.
 from app.agents.langchain_assistant import AgentContext, AgentState, LangChainAssistant
 
 __all__ = ["LangChainAssistant", "AgentContext", "AgentState"]
+{%- elif cookiecutter.enable_ai_agent and cookiecutter.use_langgraph %}
+"""AI Agents module using LangGraph.
+
+This module contains a ReAct agent built with LangGraph.
+Tools are defined in the tools/ subdirectory.
+"""
+
+from app.agents.langgraph_assistant import AgentContext, AgentState, LangGraphAssistant
+
+__all__ = ["LangGraphAssistant", "AgentContext", "AgentState"]
 {%- else %}
 """AI Agents - not configured."""
 {%- endif %}

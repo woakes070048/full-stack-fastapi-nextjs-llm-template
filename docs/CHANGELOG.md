@@ -5,6 +5,93 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.13] - 2026-01-06
+
+### Added
+
+#### Comprehensive Configuration Validation
+
+- **New validation rules** to prevent invalid option combinations at config time:
+  - WebSocket JWT auth requires main JWT auth to be enabled
+  - WebSocket API key auth requires main API key auth to be enabled
+  - Admin panel authentication requires JWT auth (for User model)
+  - Conversation persistence requires AI agent to be enabled
+  - Admin panel requires SQLAlchemy ORM (SQLModel not fully supported by SQLAdmin)
+  - Session management requires JWT auth
+  - Webhooks require a database to store subscriptions and delivery history
+  - Background task queues (Celery/Taskiq/ARQ) require Redis as broker
+  - Logfire database instrumentation requires a database
+  - Logfire Redis instrumentation requires Redis
+  - Logfire Celery instrumentation requires Celery as background task system
+
+#### Improved Post-Generation Instructions
+
+- **Clearer database setup instructions** with warning message:
+  ```
+  ⚠️  Run all commands in order: db-migrate creates the migration, db-upgrade applies it
+  ```
+- **README.md** updated with prominent warning about required migration steps
+- Commands displayed with aligned descriptions for better readability
+
+#### Dynamic Integration Prompts
+
+- **Context-aware integration options** in interactive wizard:
+  - Admin Panel option only shown when SQLAlchemy is selected (not SQLModel)
+  - Webhooks option only shown when a database is enabled
+  - WebSocket auth options filtered based on main auth type selected
+  - Clearer ORM selection labels: "SQLAlchemy — full control, supports admin panel" vs "SQLModel — less boilerplate, no admin panel support"
+- **Auto-enable Redis** when caching is selected (with info message)
+- **Better descriptions** for all integration options explaining dependencies
+
+#### Template Improvements
+
+- **ARQ worker service** added to `docker-compose.prod.yml`
+- **Prometheus labels** added to backend service in `docker-compose.dev.yml`
+- **OAuth environment variable** `NEXT_PUBLIC_API_URL` added to frontend `.env.example`
+- **Frontend WS_URL** now uses `backend_port` cookiecutter variable instead of hardcoded 8000
+
+### Changed
+
+#### Post-Generation Hook Improvements
+
+- **Stub file cleanup** - removes files containing only docstrings with no actual code
+- **Auth file cleanup** - removes auth/user files when JWT is disabled:
+  - `auth.py`, `users.py` routes
+  - `user.py` model, repository, service, schema
+  - `token.py` schema
+- **Logfire cleanup** - removes `logfire_setup.py` when Logfire is disabled
+- **Security cleanup** - removes `security.py` when no auth is configured at all
+- **LangGraph/CrewAI cleanup** - properly removes unused AI framework files
+
+### Fixed
+
+#### Template Fixes
+
+- **LangChain assistant `stream()` method** - changed from sync generator to async generator using `astream()` for proper async streaming
+- **OAuth callback** - made fully async, removed sync `asyncio.new_event_loop()` hack
+- **Deprecated `datetime.utcnow()`** - replaced with `datetime.now(UTC)` across all services:
+  - `cleanup.py` command
+  - `session.py` repository and service
+  - `conversation.py` service
+  - `webhook.py` service
+- **Session model** - added missing `default_factory=datetime.utcnow` for `created_at` and `last_used_at` fields
+- **Webhook model** - moved `import json` to module level instead of inside properties
+- **Admin panel template condition** - now correctly checks for SQLAlchemy ORM requirement
+- **Caching setup** - only runs when both caching AND Redis are enabled
+- **Config imports** - fixed conditional imports for Redis-only projects (no database)
+
+### Tests Added
+
+- **290+ new test lines** covering all new validation rules
+- Tests for WebSocket auth requiring main auth
+- Tests for admin panel requiring SQLAlchemy
+- Tests for admin authentication requiring JWT
+- Tests for conversation persistence requiring AI agent
+- Tests for webhooks requiring database
+- Tests for Logfire feature dependencies (database, Redis, Celery)
+- Tests for background task queues requiring Redis
+- Updated CLI tests to include `--redis` flag with task queue options
+
 ## [0.1.12] - 2026-01-02
 
 ### Added

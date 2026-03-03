@@ -677,7 +677,7 @@ def prompt_llm_provider(ai_framework: AIFrameworkType) -> LLMProviderType:
     )
 
 
-def prompt_rag_config(llm_provider: LLMProviderType) -> RAGFeatures:
+def prompt_rag_config() -> RAGFeatures:
     """Prompt for RAG configuration.
 
     Args:
@@ -929,7 +929,7 @@ def run_interactive_prompts() -> ProjectConfig:
         llm_provider = prompt_llm_provider(ai_framework)
 
         # RAG Logic
-        rag_features = prompt_rag_config(llm_provider)
+        rag_features = prompt_rag_config()
         if rag_features.enable_rag and background_tasks == BackgroundTaskType.NONE:
             console.print("[yellow]RAG requires a background task system for document ingestion.")
             console.print("[yellow] ARQ (Redis-based) has been auto enabled to support RAG.")

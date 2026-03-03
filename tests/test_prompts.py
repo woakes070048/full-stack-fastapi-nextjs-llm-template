@@ -2083,7 +2083,7 @@ class TestPromptRAGConfig:
         mock_confirm.ask.return_value = False
         mock_questionary.confirm.return_value = mock_confirm
 
-        result = prompt_rag_config(LLMProviderType.OPENAI)
+        result = prompt_rag_config()
 
         assert result.enable_rag is False
         assert result.enable_google_drive_ingestion is False
@@ -2099,7 +2099,7 @@ class TestPromptRAGConfig:
         mock_confirm.ask.side_effect = [True, False, False]
         mock_questionary.confirm.return_value = mock_confirm
 
-        result = prompt_rag_config(LLMProviderType.OPENAI)
+        result = prompt_rag_config()
 
         assert result.enable_rag is True
         assert result.enable_google_drive_ingestion is False
@@ -2112,7 +2112,7 @@ class TestPromptRAGConfig:
         mock_confirm.ask.side_effect = [True, True, False]  # RAG, Google Drive, no reranker
         mock_questionary.confirm.return_value = mock_confirm
 
-        result = prompt_rag_config(LLMProviderType.OPENAI)
+        result = prompt_rag_config()
 
         assert result.enable_rag is True
         assert result.enable_google_drive_ingestion is True
@@ -2125,7 +2125,7 @@ class TestPromptRAGConfig:
         mock_confirm.ask.side_effect = [True, False, True]  # RAG, no Google Drive, reranker
         mock_questionary.confirm.return_value = mock_confirm
 
-        result = prompt_rag_config(LLMProviderType.OPENAI)
+        result = prompt_rag_config()
 
         assert result.enable_rag is True
         assert result.enable_google_drive_ingestion is False
@@ -2138,7 +2138,7 @@ class TestPromptRAGConfig:
         mock_confirm.ask.side_effect = [True, True, True]  # RAG, Google Drive, reranker
         mock_questionary.confirm.return_value = mock_confirm
 
-        result = prompt_rag_config(LLMProviderType.OPENAI)
+        result = prompt_rag_config()
 
         assert result.enable_rag is True
         assert result.enable_google_drive_ingestion is True
@@ -2155,7 +2155,7 @@ class TestPromptRAGConfig:
         mock_questionary.confirm.return_value = mock_confirm
 
         # Call with Anthropic provider
-        prompt_rag_config(LLMProviderType.ANTHROPIC)
+        prompt_rag_config()
 
         # The function should work with any LLM provider without errors
         # (The provider is passed as argument but not used in current implementation)

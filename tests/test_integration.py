@@ -281,6 +281,7 @@ class TestGeneratedAppSmokeTest:
         sys.path.insert(0, str(backend_path))
         try:
             import fastapi  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -299,8 +300,7 @@ class TestGeneratedAppSmokeTest:
             pytest.fail(f"main.py has syntax error: {e}")
 
     @pytest.mark.skipif(
-        not Path("tests/conftest.py").exists(),
-        reason="Test requires full environment"
+        not Path("tests/conftest.py").exists(), reason="Test requires full environment"
     )
     def test_fastapi_app_can_be_imported(self, minimal_project_for_import: Path) -> None:
         """Test that the generated FastAPI app module can be imported."""
@@ -324,8 +324,7 @@ class TestGeneratedAppSmokeTest:
             sys.path = original_path
 
     @pytest.mark.skipif(
-        not Path("tests/conftest.py").exists(),
-        reason="Test requires full environment"
+        not Path("tests/conftest.py").exists(), reason="Test requires full environment"
     )
     def test_fastapi_app_has_app_instance(self, minimal_project_for_import: Path) -> None:
         """Test that the generated main.py exports a FastAPI app instance."""
@@ -351,8 +350,9 @@ class TestGeneratedAppSmokeTest:
             assert app_instance is not None, "FastAPI app instance not found in main.py"
 
             # Verify it's a FastAPI instance
-            assert type(app_instance).__name__ == "FastAPI", \
+            assert type(app_instance).__name__ == "FastAPI", (
                 f"Expected FastAPI instance, got {type(app_instance).__name__}"
+            )
         finally:
             # Restore original sys.path
             sys.path = original_path

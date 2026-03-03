@@ -11,7 +11,6 @@ from fastapi_gen.config import (
     PdfParserType,
     ProjectConfig,
     RAGFeatures,
-    RerankerType,
     VectorStoreType,
 )
 
@@ -97,7 +96,10 @@ class TestEmbeddingProviderAutoDerivation:
             enable_redis=True,
             enable_docker=True,
         )
-        assert config.embedding_provider == EmbeddingProviderType.VOYAGE
+        assert (
+            config.to_cookiecutter_context()["embedding_provider"] == EmbeddingProviderType.VOYAGE
+        )
+        # assert config.embedd. == EmbeddingProviderType.VOYAGE
 
     def test_openrouter_derives_sentence_transformers(self) -> None:
         """Test that OpenRouter LLM provider derives Sentence Transformers embeddings."""
@@ -110,7 +112,10 @@ class TestEmbeddingProviderAutoDerivation:
             enable_redis=True,
             enable_docker=True,
         )
-        assert config.embedding_provider == EmbeddingProviderType.SENTENCE_TRANSFORMERS
+        assert (
+            config.to_cookiecutter_context()["embedding_provider"]
+            == EmbeddingProviderType.SENTENCE_TRANSFORMERS
+        )
 
     def test_openai_derives_openai_embeddings(self) -> None:
         """Test that OpenAI LLM provider derives OpenAI embeddings."""
@@ -123,7 +128,9 @@ class TestEmbeddingProviderAutoDerivation:
             enable_redis=True,
             enable_docker=True,
         )
-        assert config.embedding_provider == EmbeddingProviderType.OPENAI
+        assert (
+            config.to_cookiecutter_context()["embedding_provider"] == EmbeddingProviderType.OPENAI
+        )
 
 
 class TestRerankerAutoDerivation:
@@ -140,7 +147,7 @@ class TestRerankerAutoDerivation:
             enable_redis=True,
             enable_docker=True,
         )
-        assert config.reranker == RerankerType.CROSS_ENCODER
+        assert config.to_cookiecutter_context()["use_cross_encoder_reranker"]
 
     def test_openai_derives_cohere_reranker(self) -> None:
         """Test that OpenAI LLM provider derives Cohere reranker."""
@@ -153,7 +160,7 @@ class TestRerankerAutoDerivation:
             enable_redis=True,
             enable_docker=True,
         )
-        assert config.reranker == RerankerType.COHERE
+        assert config.to_cookiecutter_context()["use_cohere_reranker"]
 
     def test_anthropic_derives_cohere_reranker(self) -> None:
         """Test that Anthropic LLM provider derives Cohere reranker."""
@@ -166,7 +173,7 @@ class TestRerankerAutoDerivation:
             enable_redis=True,
             enable_docker=True,
         )
-        assert config.reranker == RerankerType.COHERE
+        assert config.to_cookiecutter_context()["use_cohere_reranker"]
 
 
 class TestRAGCookiecutterContext:
@@ -178,7 +185,6 @@ class TestRAGCookiecutterContext:
             project_name="test",
             enable_ai_agent=True,
             rag_features=RAGFeatures(enable_rag=True),
-            embedding_provider=EmbeddingProviderType.OPENAI,
             background_tasks=BackgroundTaskType.CELERY,
             enable_redis=True,
             enable_docker=True,
@@ -247,7 +253,6 @@ class TestRAGCookiecutterContext:
             project_name="test",
             enable_ai_agent=True,
             rag_features=RAGFeatures(enable_rag=True, enable_reranker=True),
-            reranker=RerankerType.COHERE,
             background_tasks=BackgroundTaskType.CELERY,
             enable_redis=True,
             enable_docker=True,
@@ -295,8 +300,7 @@ class TestRAGCookiecutterContext:
         config = ProjectConfig(
             project_name="test",
             enable_ai_agent=True,
-            rag_features=RAGFeatures(enable_rag=True),
-            pdf_parser=PdfParserType.LLAMAPARSE,
+            rag_features=RAGFeatures(enable_rag=True, pdf_parser=PdfParserType.LLAMAPARSE),
             background_tasks=BackgroundTaskType.CELERY,
             enable_redis=True,
             enable_docker=True,

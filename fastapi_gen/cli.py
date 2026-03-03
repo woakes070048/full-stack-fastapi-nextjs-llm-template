@@ -19,7 +19,6 @@ from .config import (
     PdfParserType,
     ProjectConfig,
     RAGFeatures,
-    RerankerType,
 )
 from .generator import generate_project, post_generation_tasks
 from .prompts import confirm_generation, run_interactive_prompts, show_summary
@@ -369,9 +368,8 @@ def create(
                     enable_rag=rag,
                     enable_google_drive_ingestion=gdrive_rag,
                     enable_reranker=(reranker != "none"),
+                    pdf_parser=PdfParserType(pdf_parser),
                 ),
-                reranker=RerankerType(reranker),
-                pdf_parser=PdfParserType(pdf_parser),
             )
 
         console.print(f"[cyan]Creating project:[/] {name}")

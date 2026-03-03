@@ -154,7 +154,6 @@ class RerankerType(str, Enum):
 
 class DocumentParserType(str, Enum):
     """Define the document parser used to process non-PDF documents.
-    
     Note: PDF parsing is now controlled separately via PdfParserType.
     This setting applies to TXT, MD, and DOCX files only.
     """
@@ -164,7 +163,6 @@ class DocumentParserType(str, Enum):
 
 class PdfParserType(str, Enum):
     """Define the PDF parser used to process PDF documents.
-    
     PDFPLUMBER: Fast, free, local PDF extraction using pdfplumber.
                Only extracts text layer - fails on scanned images.
     LLAMAPARSE: AI-powered cloud extraction. Handles complex layouts,
@@ -187,6 +185,8 @@ class RAGFeatures(BaseModel):
     enable_rag: bool = False
     enable_google_drive_ingestion: bool = False
     enable_reranker: bool = False
+    # pdf_parser is stored here since it's only used when RAG is enabled
+    pdf_parser: PdfParserType = PdfParserType.PDFPLUMBER
     vector_store: VectorStoreType = VectorStoreType.MILVUS
 
 
@@ -209,10 +209,6 @@ class ProjectConfig(BaseModel):
 
     # RAG
     rag_features: RAGFeatures = Field(default_factory=RAGFeatures)
-    embedding_provider: EmbeddingProviderType = EmbeddingProviderType.OPENAI
-    reranker: RerankerType = RerankerType.NONE
-    document_parser: DocumentParserType = DocumentParserType.PYTHON_NATIVE
-    pdf_parser: PdfParserType = PdfParserType.PDFPLUMBER
 
     # Authentication
     auth: AuthType = AuthType.JWT
@@ -458,29 +454,6 @@ class ProjectConfig(BaseModel):
         ):
             raise ValueError("Google Drive ingestion requires OAuth Provider to be set.")
 
-        # RAG Features
-        if self.rag_features.enable_rag:
-            # Embeddings
-            if self.llm_provider == LLMProviderType.ANTHROPIC:
-                self.embedding_provider = EmbeddingProviderType.VOYAGE
-
-            elif self.llm_provider == LLMProviderType.OPENROUTER:
-                self.embedding_provider = EmbeddingProviderType.SENTENCE_TRANSFORMERS
-
-            else:
-                self.embedding_provider = EmbeddingProviderType.OPENAI
-
-            # Reranker
-            if self.rag_features.enable_reranker:
-                if self.llm_provider == LLMProviderType.OPENROUTER:
-                    self.reranker = RerankerType.CROSS_ENCODER
-
-                else:
-                    self.reranker = RerankerType.COHERE
-
-            else:
-                self.reranker = RerankerType.NONE
-
         return self
 
     def to_cookiecutter_context(self) -> dict[str, Any]:
@@ -610,32 +583,36 @@ class ProjectConfig(BaseModel):
             # RAG
             "enable_rag": self.rag_features.enable_rag,
             "use_milvus": self.rag_features.enable_rag,
-            "embedding_provider": self.embedding_provider.value
-            if self.rag_features.enable_rag
-            else "openai",
+            # Embedding provider is auto-derived from LLM provider
+            "embedding_provider": (
+                EmbeddingProviderType.VOYAGE.value
+                if self.llm_provider == LLMProviderType.ANTHROPIC
+                else EmbeddingProviderType.SENTENCE_TRANSFORMERS.value
+                if self.llm_provider == LLMProviderType.OPENROUTER
+                else EmbeddingProviderType.OPENAI.value
+            ),
             "use_openai_embeddings": self.rag_features.enable_rag
-            and self.embedding_provider == EmbeddingProviderType.OPENAI,
+            and self.llm_provider != LLMProviderType.ANTHROPIC
+            and self.llm_provider != LLMProviderType.OPENROUTER,
             "use_voyage_embeddings": self.rag_features.enable_rag
-            and self.embedding_provider == EmbeddingProviderType.VOYAGE,
+            and self.llm_provider == LLMProviderType.ANTHROPIC,
             "use_sentence_transformers": self.rag_features.enable_rag
-            and self.embedding_provider == EmbeddingProviderType.SENTENCE_TRANSFORMERS,
+            and self.llm_provider == LLMProviderType.OPENROUTER,
             "enable_reranker": self.rag_features.enable_reranker
             if self.rag_features.enable_rag
             else False,
             "use_cohere_reranker": self.rag_features.enable_reranker
-            and self.reranker == RerankerType.COHERE,
+            and self.llm_provider != LLMProviderType.OPENROUTER,
             "use_cross_encoder_reranker": self.rag_features.enable_reranker
-            and self.reranker == RerankerType.CROSS_ENCODER,
-            "document_parser": self.document_parser.value
-            if self.rag_features.enable_rag
-            else "python_native",
-            "pdf_parser": self.pdf_parser.value
+            and self.llm_provider == LLMProviderType.OPENROUTER,
+            "document_parser": "python_native",  # Always use Python parser for non-PDF
+            "pdf_parser": self.rag_features.pdf_parser.value
             if self.rag_features.enable_rag
             else "pdfplumber",
             "use_llamaparse": self.rag_features.enable_rag
-            and self.pdf_parser == PdfParserType.LLAMAPARSE,
+            and self.rag_features.pdf_parser == PdfParserType.LLAMAPARSE,
             "use_pdfplumber": self.rag_features.enable_rag
-            and self.pdf_parser == PdfParserType.PDFPLUMBER,
+            and self.rag_features.pdf_parser == PdfParserType.PDFPLUMBER,
             "use_python_parser": True,  # Always use Python parser for non-PDF
             "enable_google_drive_ingestion": self.rag_features.enable_google_drive_ingestion
             if self.rag_features.enable_rag

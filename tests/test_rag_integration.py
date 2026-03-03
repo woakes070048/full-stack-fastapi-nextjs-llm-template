@@ -141,8 +141,9 @@ class TestRAGFilesExist:
         docker_compose = rag_project / "docker-compose.yml"
         content = docker_compose.read_text()
         # Use regex to match YAML service definition (with possible leading whitespace)
-        assert re.search(r"^\s*milvus:", content, re.MULTILINE), \
+        assert re.search(r"^\s*milvus:", content, re.MULTILINE), (
             "docker-compose.yml should have milvus service"
+        )
 
 
 class TestNonRAGProjectNoRAGFiles:
@@ -193,8 +194,9 @@ class TestRAGWithDifferentBackgroundTasks:
         rag_tasks = project / "backend" / "app" / "worker" / "tasks" / "rag_ingestion.py"
         content = rag_tasks.read_text()
         # Use word boundary to avoid false matches
-        assert re.search(r"\bshared_task\b", content), \
+        assert re.search(r"\bshared_task\b", content), (
             "Celery project should have @shared_task decorator"
+        )
 
     def test_rag_taskiq_has_reindex_task(self, tmp_path) -> None:
         """Test that TaskIQ RAG project has reindex task."""
@@ -212,8 +214,9 @@ class TestRAGWithDifferentBackgroundTasks:
         rag_tasks = project / "backend" / "app" / "worker" / "tasks" / "rag_ingestion.py"
         content = rag_tasks.read_text()
         # Use regex to match broker.task or @broker decorator
-        assert re.search(r"(broker\.task|@broker)", content), \
+        assert re.search(r"(broker\.task|@broker)", content), (
             "TaskIQ project should have @broker.task decorator"
+        )
 
     def test_rag_arq_has_reindex_task(self, tmp_path) -> None:
         """Test that ARQ RAG project has reindex task."""
@@ -231,26 +234,34 @@ class TestRAGWithDifferentBackgroundTasks:
         rag_tasks = project / "backend" / "app" / "worker" / "tasks" / "rag_ingestion.py"
         content = rag_tasks.read_text()
         # Use word boundary to avoid false matches
-        assert re.search(r"\breindex_collection_arq\b", content), \
+        assert re.search(r"\breindex_collection_arq\b", content), (
             "ARQ project should have reindex_collection_arq function"
+        )
 
 
 class TestRAGWithAIFrameworks:
     """Tests for RAG with different AI frameworks."""
 
-    @pytest.mark.parametrize("framework", [
-        AIFrameworkType.PYDANTIC_AI,
-        AIFrameworkType.LANGCHAIN,
-        AIFrameworkType.LANGGRAPH,
-        # Skip CrewAI - template has pre-existing bug with user_input
-        AIFrameworkType.DEEPAGENTS,
-    ])
+    @pytest.mark.parametrize(
+        "framework",
+        [
+            AIFrameworkType.PYDANTIC_AI,
+            AIFrameworkType.LANGCHAIN,
+            AIFrameworkType.LANGGRAPH,
+            # Skip CrewAI - template has pre-existing bug with user_input
+            AIFrameworkType.DEEPAGENTS,
+        ],
+    )
     def test_rag_with_ai_framework(self, tmp_path, framework) -> None:
         """Test that RAG works with all AI frameworks."""
         # Skip LangChain/LangGraph/CrewAI/DeepAgents with OpenRouter (not supported)
         llm_provider = LLMProviderType.OPENAI
-        if framework in (AIFrameworkType.LANGCHAIN, AIFrameworkType.LANGGRAPH,
-                        AIFrameworkType.CREWAI, AIFrameworkType.DEEPAGENTS):
+        if framework in (
+            AIFrameworkType.LANGCHAIN,
+            AIFrameworkType.LANGGRAPH,
+            AIFrameworkType.CREWAI,
+            AIFrameworkType.DEEPAGENTS,
+        ):
             llm_provider = LLMProviderType.OPENAI
 
         config = ProjectConfig(
@@ -429,8 +440,7 @@ class TestRAGWithPDFParsers:
             background_tasks=BackgroundTaskType.CELERY,
             enable_redis=True,
             enable_ai_agent=True,
-            rag_features=RAGFeatures(enable_rag=True),
-            pdf_parser=PdfParserType.LLAMAPARSE,
+            rag_features=RAGFeatures(enable_rag=True, pdf_parser=PdfParserType.LLAMAPARSE),
             enable_docker=True,
         )
         project = generate_project(config, tmp_path)
@@ -446,6 +456,7 @@ class TestRAGCodePatterns:
     def test_rag_api_uses_list_collections_method(self, tmp_path: Path) -> None:
         """Test that rag API uses list_collections() method instead of client.list_collections()."""
         import re
+
         config = ProjectConfig(
             project_name="test_rag_patterns",
             database=DatabaseType.POSTGRESQL,
@@ -462,16 +473,19 @@ class TestRAGCodePatterns:
         content = rag_api.read_text()
 
         # Should use list_collections() method on vector_store
-        assert re.search(r'await\s+vector_store\.list_collections\(\)', content), \
+        assert re.search(r"await\s+vector_store\.list_collections\(\)", content), (
             "rag.py should use vector_store.list_collections() method"
+        )
 
         # Should NOT directly access client.list_collections()
-        assert not re.search(r'vector_store\.client\.list_collections\(\)', content), \
+        assert not re.search(r"vector_store\.client\.list_collections\(\)", content), (
             "rag.py should NOT directly access vector_store.client.list_collections()"
+        )
 
     def test_rag_tool_uses_lru_cache(self, tmp_path: Path) -> None:
         """Test that rag_tool.py uses lru_cache instead of global singleton."""
         import re
+
         config = ProjectConfig(
             project_name="test_rag_cache",
             database=DatabaseType.POSTGRESQL,
@@ -488,16 +502,17 @@ class TestRAGCodePatterns:
         content = rag_tool.read_text()
 
         # Should use lru_cache
-        assert re.search(r'@lru_cache', content), \
-            "rag_tool.py should use @lru_cache decorator"
+        assert re.search(r"@lru_cache", content), "rag_tool.py should use @lru_cache decorator"
 
         # Should NOT use global singleton pattern
-        assert not re.search(r'^_retrieval_service\s*:', content, re.MULTILINE), \
+        assert not re.search(r"^_retrieval_service\s*:", content, re.MULTILINE), (
             "rag_tool.py should NOT use global singleton pattern"
+        )
 
     def test_rag_vectorstore_has_list_collections_method(self, tmp_path: Path) -> None:
         """Test that vectorstore.py has list_collections method in both base and milvus classes."""
         import re
+
         config = ProjectConfig(
             project_name="test_rag_vec",
             database=DatabaseType.POSTGRESQL,
@@ -514,13 +529,14 @@ class TestRAGCodePatterns:
         content = vectorstore.read_text()
 
         # BaseVectorStore should have abstract list_collections
-        assert re.search(r'async def list_collections\(self\)', content), \
+        assert re.search(r"async def list_collections\(self\)", content), (
             "BaseVectorStore should have list_collections method"
+        )
 
         # MilvusVectorStore should implement list_collections
-        assert re.search(r'class MilvusVectorStore.*list_collections', content, re.DOTALL), \
+        assert re.search(r"class MilvusVectorStore.*list_collections", content, re.DOTALL), (
             "MilvusVectorStore should implement list_collections method"
-
+        )
 
     def test_rag_requires_ai_agent(self) -> None:
         """Test that RAG requires AI agent."""

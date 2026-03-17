@@ -658,6 +658,7 @@ def prompt_llm_provider(ai_framework: AIFrameworkType) -> LLMProviderType:
     choices = [
         questionary.Choice("OpenAI (gpt-4o-mini)", value=LLMProviderType.OPENAI),
         questionary.Choice("Anthropic (claude-sonnet-4-5)", value=LLMProviderType.ANTHROPIC),
+        questionary.Choice("Google Gemini (gemini-2.0-flash)", value=LLMProviderType.GOOGLE),
     ]
 
     # OpenRouter only available for PydanticAI (not LangChain, LangGraph, or CrewAI)
@@ -710,7 +711,7 @@ def prompt_rag_config() -> RAGFeatures:
 
     enable_google_drive_ingestion = False
     enable_reranker = False
-    pdf_parser = PdfParserType.PDFPLUMBER
+    pdf_parser = PdfParserType.PYMUPDF
 
     # In RAG is enabled, ask for features
     if enable_rag:
@@ -727,15 +728,15 @@ def prompt_rag_config() -> RAGFeatures:
             "Select PDF parser:",
             choices=[
                 questionary.Choice(
-                    "PDFPlumber (fast, local, free) - extracts text layer only",
-                    value=PdfParserType.PDFPLUMBER,
+                    "PyMuPDF (fast, local, free) - text, tables, images, OCR fallback",
+                    value=PdfParserType.PYMUPDF,
                 ),
                 questionary.Choice(
                     "LlamaParse (AI-powered, cloud) - handles complex layouts & scanned docs",
                     value=PdfParserType.LLAMAPARSE,
                 ),
             ],
-            default=PdfParserType.PDFPLUMBER,
+            default=PdfParserType.PYMUPDF,
         ).ask()
         pdf_parser = PdfParserType(pdf_parser_choice)
 

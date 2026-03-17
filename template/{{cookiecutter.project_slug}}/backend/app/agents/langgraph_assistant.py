@@ -19,12 +19,18 @@ from langchain_openai import ChatOpenAI
 {%- if cookiecutter.use_anthropic %}
 from langchain_anthropic import ChatAnthropic
 {%- endif %}
+{%- if cookiecutter.use_google %}
+from langchain_google_genai import ChatGoogleGenerativeAI
+{%- endif %}
 
 from app.agents.prompts import DEFAULT_SYSTEM_PROMPT
 {%- if cookiecutter.enable_rag %}
 from app.agents.prompts import get_system_prompt_with_rag
 {%- endif %}
 from app.agents.tools import get_current_datetime
+{%- if cookiecutter.enable_web_search %}
+from app.agents.tools.web_search import web_search_sync
+{%- endif %}
 {%- if cookiecutter.enable_rag %}
 from app.agents.tools.rag_tool import search_knowledge_base_sync
 {%- endif %}
@@ -86,6 +92,9 @@ def search_documents(query: str, collection: str = "documents", top_k: int = 5) 
 
 # List of all available tools
 ALL_TOOLS = [current_datetime]
+{%- if cookiecutter.enable_web_search %}
+ALL_TOOLS.append(web_search_sync)
+{%- endif %}
 {%- if cookiecutter.enable_rag %}
 ALL_TOOLS.append(search_documents)
 {%- endif %}
@@ -142,6 +151,13 @@ class LangGraphAssistant:
             temperature=self.temperature,
             api_key=settings.ANTHROPIC_API_KEY,
             streaming=True,
+        )
+{%- endif %}
+{%- if cookiecutter.use_google %}
+        model = ChatGoogleGenerativeAI(
+            model=self.model_name,
+            temperature=self.temperature,
+            google_api_key=settings.GOOGLE_API_KEY,
         )
 {%- endif %}
 

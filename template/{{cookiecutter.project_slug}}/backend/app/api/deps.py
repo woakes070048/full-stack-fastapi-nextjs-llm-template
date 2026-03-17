@@ -549,9 +549,15 @@ from app.rag.ingestion import IngestionService
 from app.rag.documents import DocumentProcessor
 from fastapi import Request
 from app.core.config import settings
+from app.rag.retrieval import RetrievalService
 {%- if cookiecutter.use_milvus %}
 from app.rag.vectorstore import MilvusVectorStore
-from app.rag.retrieval import MilvusRetrievalService
+{%- elif cookiecutter.use_qdrant %}
+from app.rag.vectorstore import QdrantVectorStore
+{%- elif cookiecutter.use_chromadb %}
+from app.rag.vectorstore import ChromaVectorStore
+{%- elif cookiecutter.use_pgvector %}
+from app.rag.vectorstore import PgVectorStore
 {%- endif %}
 
 def get_embedding_service(request: Request) -> EmbeddingService:
@@ -563,38 +569,39 @@ def get_embedding_service(request: Request) -> EmbeddingService:
 # Type Alias for the Embedder
 EmbeddingSvc = Annotated[EmbeddingService, Depends(get_embedding_service)]
 
-{%- if cookiecutter.use_milvus %}
-def get_vectorstore(
-    request: Request,
-    embedder: EmbeddingSvc
-) -> MilvusVectorStore:
-    """Get vector store client from lifespan state or create new if not available."""
+from app.rag.vectorstore import BaseVectorStore
+
+def get_vectorstore(request: Request, embedder: EmbeddingSvc) -> BaseVectorStore:
+    """Get vector store client from lifespan state or create new."""
     if request and hasattr(request.state, "vector_store"):
         return request.state.vector_store
+{%- if cookiecutter.use_milvus %}
     return MilvusVectorStore(settings=settings.rag, embedding_service=embedder)
+{%- elif cookiecutter.use_qdrant %}
+    return QdrantVectorStore(settings=settings.rag, embedding_service=embedder)
+{%- elif cookiecutter.use_chromadb %}
+    return ChromaVectorStore(settings=settings.rag, embedding_service=embedder)
+{%- elif cookiecutter.use_pgvector %}
+    return PgVectorStore(settings=settings.rag, embedding_service=embedder)
+{%- endif %}
 
-VectorStoreSvc = Annotated[MilvusVectorStore, Depends(get_vectorstore)]
+VectorStoreSvc = Annotated[BaseVectorStore, Depends(get_vectorstore)]
 
-def get_retrieval_service(
-    vector_store: VectorStoreSvc
-) -> MilvusRetrievalService:
-    """Create MilvusRetrievalService instance.
-    
-    Includes optional reranking service if configured.
-    """
+def get_retrieval_service(vector_store: VectorStoreSvc) -> RetrievalService:
+    """Create RetrievalService instance."""
     {%- if cookiecutter.enable_reranker %}
     from app.rag.reranker import RerankService
     rerank_service = RerankService(settings=settings.rag)
-    return MilvusRetrievalService(
+    return RetrievalService(
         vector_store=vector_store,
         settings=settings.rag,
         rerank_service=rerank_service,
     )
     {%- else %}
-    return MilvusRetrievalService(vector_store=vector_store, settings=settings.rag)
+    return RetrievalService(vector_store=vector_store, settings=settings.rag)
     {%- endif %}
 
-RetrievalSvc = Annotated[MilvusRetrievalService, Depends(get_retrieval_service)]
+RetrievalSvc = Annotated[RetrievalService, Depends(get_retrieval_service)]
 
 def get_document_processor() -> DocumentProcessor:
     """Create DocumentProcessor instance."""
@@ -604,12 +611,25 @@ DocumentProcessorSvc = Annotated[DocumentProcessor, Depends(get_document_process
 
 def get_ingestion_service(
     processor: DocumentProcessorSvc,
-    vector_store: VectorStoreSvc
+    vector_store: VectorStoreSvc,
+{%- if cookiecutter.enable_webhooks and cookiecutter.use_database %}
+    request: Request,
+{%- endif %}
 ) -> IngestionService:
     """Create IngestionService instance."""
-    return IngestionService(processor=processor, vector_store=vector_store)
+{%- if cookiecutter.enable_webhooks and cookiecutter.use_database %}
+    # Wire webhook dispatch for RAG events
+    async def on_rag_event(event: str, data: dict):
+        from app.services.webhook import WebhookService
+        db = request.state.db if hasattr(request.state, "db") else None
+        if db:
+            webhook_service = WebhookService(db)
+            await webhook_service.dispatch_event(event, data)
 
-IngestionSvc = Annotated[IngestionService, Depends(get_ingestion_service)]
+    return IngestionService(processor=processor, vector_store=vector_store, on_event=on_rag_event)
+{%- else %}
+    return IngestionService(processor=processor, vector_store=vector_store)
 {%- endif %}
 
+IngestionSvc = Annotated[IngestionService, Depends(get_ingestion_service)]
 {%- endif %}

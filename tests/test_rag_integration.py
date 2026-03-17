@@ -475,14 +475,14 @@ class TestRAGWithPDFParsers:
             enable_redis=True,
             enable_ai_agent=True,
             rag_features=RAGFeatures(enable_rag=True),
-            pdf_parser=PdfParserType.PDFPLUMBER,
+            pdf_parser=PdfParserType.PYMUPDF,
             enable_docker=True,
         )
         project = generate_project(config, tmp_path)
 
         rag_config = project / "backend" / "app" / "rag" / "config.py"
         content = rag_config.read_text()
-        assert "pdfplumber" in content.lower()
+        assert "pymupdf" in content.lower()
 
     def test_rag_with_llamaparse(self, tmp_path) -> None:
         """Test RAG with LlamaParse parser."""

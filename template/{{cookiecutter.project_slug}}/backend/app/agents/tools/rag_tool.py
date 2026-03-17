@@ -25,19 +25,31 @@ def _get_retrieval_service_cached() -> "BaseRetrievalService":
         Configured BaseRetrievalService instance.
     """
     # Import here to avoid circular imports at module load time
+    from app.rag.retrieval import RetrievalService
 {%- if cookiecutter.use_milvus %}
-    from app.rag.retrieval import MilvusRetrievalService
     from app.rag.vectorstore import MilvusVectorStore
-{%- else %}
-    raise RuntimeError("RAG requires Milvus vector store. Please enable use_milvus.")
+{%- elif cookiecutter.use_qdrant %}
+    from app.rag.vectorstore import QdrantVectorStore
+{%- elif cookiecutter.use_chromadb %}
+    from app.rag.vectorstore import ChromaVectorStore
+{%- elif cookiecutter.use_pgvector %}
+    from app.rag.vectorstore import PgVectorStore
 {%- endif %}
     from app.rag.embeddings import EmbeddingService
     from app.rag.config import RAGSettings
 
     settings = RAGSettings()
     embedding_service = EmbeddingService(settings)
+{%- if cookiecutter.use_milvus %}
     vector_store = MilvusVectorStore(settings, embedding_service)
-    return MilvusRetrievalService(vector_store, settings)
+{%- elif cookiecutter.use_qdrant %}
+    vector_store = QdrantVectorStore(settings, embedding_service)
+{%- elif cookiecutter.use_chromadb %}
+    vector_store = ChromaVectorStore(settings, embedding_service)
+{%- elif cookiecutter.use_pgvector %}
+    vector_store = PgVectorStore(settings, embedding_service)
+{%- endif %}
+    return RetrievalService(vector_store, settings)
 
 
 def get_retrieval_service() -> "BaseRetrievalService":
@@ -55,44 +67,59 @@ def get_retrieval_service() -> "BaseRetrievalService":
 async def search_knowledge_base(
     query: str,
     collection: str = "documents",
+    collections: list[str] | None = None,
     top_k: int = 5,
 ) -> str:
     """Search the knowledge base and return formatted results.
 
     Args:
         query: The search query string.
-        collection: Name of the collection to search (default: "documents").
+        collection: Name of a single collection to search (default: "documents").
+        collections: List of collection names for cross-collection search (overrides collection).
         top_k: Number of top results to retrieve (default: 5).
 
     Returns:
-        Formatted string with search results, including content and scores.
-        Each result is formatted as:
-        "Document [doc_id]: [content] (score: [score])"
+        Formatted string with search results including citations.
     """
     service = get_retrieval_service()
 
-    results = await service.retrieve(
-        query=query,
-        collection_name=collection,
-        limit=top_k,
-    )
+    if collections and len(collections) > 1:
+        results = await service.retrieve_multi(
+            query=query,
+            collection_names=collections,
+            limit=top_k,
+        )
+    else:
+        target = collections[0] if collections else collection
+        results = await service.retrieve(
+            query=query,
+            collection_name=target,
+            limit=top_k,
+        )
 
     if not results:
         return "No relevant documents found in the knowledge base."
 
-    # Format results as a readable string
+    # Format results with citations for source attribution
     formatted_results = []
     for i, result in enumerate(results, start=1):
-        doc_info = ""
-        if result.metadata.get("filename"):
-            doc_info = f" (source: {result.metadata['filename']})"
+        source = result.metadata.get("filename", "unknown")
+        page = result.metadata.get("page_num", "")
+        chunk = result.metadata.get("chunk_num", "")
+        col = result.metadata.get("collection", "")
+        page_info = f", page {page}" if page else ""
+        chunk_info = f", chunk {chunk}" if chunk else ""
+        col_info = f" [{col}]" if col else ""
 
         formatted_results.append(
-            f"[{i}] Score: {result.score:.3f}{doc_info}\n"
-            f"Content: {result.content}"
+            f"[{i}] Source: {source}{page_info}{chunk_info}{col_info} (score: {result.score:.3f})\n"
+            f"{result.content}"
         )
 
-    return "\n\n".join(formatted_results)
+    return (
+        "Search results (cite sources using [1], [2], etc. in your response):\n\n"
+        + "\n\n".join(formatted_results)
+    )
 
 
 def _run_async_search(query: str, collection: str, top_k: int) -> str:
@@ -113,7 +140,7 @@ def _run_async_search(query: str, collection: str, top_k: int) -> str:
 
 def search_knowledge_base_sync(
     query: str,
-    collection: str = "default",
+    collection: str = "documents",
     top_k: int = 5,
 ) -> str:
     """Synchronous wrapper for search_knowledge_base.
@@ -171,7 +198,7 @@ class SearchKnowledgeBase(BaseTool):
         "Search the knowledge base for relevant documents. "
         "Return formatted excerpts with scores and sources."
     )
-    args_schema: type[BaseTool] = SearchDocumentsInput
+    args_schema: type[BaseModel] = SearchDocumentsInput
 
     def _run(self, query: str, collection: str = "documents", top_k: int = 5) -> str:
         # Use sync wrapper for CrewAI

@@ -1,5 +1,29 @@
 .PHONY: install format lint test run clean help db-init
 
+# === Quick Start (one command to rule them all) ===
+{%- if cookiecutter.enable_docker %}
+quickstart: install docker-up
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
+	@echo "Waiting for services to be ready..."
+	@sleep 3
+	uv run --directory backend {{ cookiecutter.project_slug }} db upgrade || true
+{%- endif %}
+{%- if cookiecutter.use_jwt %}
+	@echo "Creating admin user (admin@example.com / admin123)..."
+	uv run --directory backend {{ cookiecutter.project_slug }} user create --email admin@example.com --password admin123 --superuser 2>/dev/null || true
+{%- endif %}
+	@echo ""
+	@echo "🚀 Ready! All services running:"
+	@echo "   API:      http://localhost:{{ cookiecutter.backend_port }}"
+	@echo "   Docs:     http://localhost:{{ cookiecutter.backend_port }}/docs"
+{%- if cookiecutter.use_frontend %}
+	@echo "   Frontend: Run 'cd frontend && bun install && bun dev' or 'make docker-frontend'"
+{%- endif %}
+{%- if cookiecutter.use_jwt %}
+	@echo "   Admin:    http://localhost:{{ cookiecutter.backend_port }}/admin (admin@example.com / admin123)"
+{%- endif %}
+{%- endif %}
+
 # === Setup ===
 install:
 	uv sync --directory backend --dev
@@ -232,6 +256,24 @@ docker-redis:
 docker-redis-stop:
 	docker-compose stop redis
 {%- endif %}
+
+{%- if cookiecutter.use_frontend %}
+
+# === Vercel (Frontend Deployment) ===
+vercel-deploy:
+	cd frontend && npx vercel --prod
+	@echo ""
+	@echo "✅ Frontend deployed to Vercel!"
+	@echo "   Set environment variables in Vercel dashboard:"
+	@echo "   BACKEND_URL=https://api.your-domain.com"
+	@echo "   BACKEND_WS_URL=wss://api.your-domain.com"
+{%- if cookiecutter.use_jwt %}
+	@echo "   NEXT_PUBLIC_AUTH_ENABLED=true"
+{%- endif %}
+{%- if cookiecutter.enable_rag %}
+	@echo "   NEXT_PUBLIC_RAG_ENABLED=true"
+{%- endif %}
+{%- endif %}
 {%- endif %}
 
 # === Cleanup ===
@@ -248,6 +290,11 @@ help:
 	@echo "{{ cookiecutter.project_name }} - Available Commands"
 	@echo "======================================"
 	@echo ""
+{%- if cookiecutter.enable_docker %}
+	@echo "Quick Start:"
+	@echo "  make quickstart    Install + start all services + setup DB"
+	@echo ""
+{%- endif %}
 	@echo "Setup:"
 	@echo "  make install       Install dependencies + pre-commit hooks"
 	@echo ""

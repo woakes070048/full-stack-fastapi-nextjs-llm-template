@@ -1,5 +1,4 @@
 {%- if cookiecutter.enable_rag %}
-{% if cookiecutter.use_milvus %}
 """
 RAG CLI commands for document management and retrieval.
 
@@ -17,15 +16,24 @@ from pathlib import Path
 import click
 
 from app.commands import command, info, success, error, warning
-from app.rag.config import RAGSettings
+from app.rag.config import DocumentExtensions, RAGSettings
 from app.rag.documents import DocumentProcessor
 from app.rag.embeddings import EmbeddingService
 from app.rag.ingestion import IngestionService
-from app.rag.retrieval import MilvusRetrievalService
+from app.rag.retrieval import RetrievalService
+from app.rag.vectorstore import BaseVectorStore
+{%- if cookiecutter.use_milvus %}
 from app.rag.vectorstore import MilvusVectorStore
+{%- elif cookiecutter.use_qdrant %}
+from app.rag.vectorstore import QdrantVectorStore
+{%- elif cookiecutter.use_chromadb %}
+from app.rag.vectorstore import ChromaVectorStore
+{%- elif cookiecutter.use_pgvector %}
+from app.rag.vectorstore import PgVectorStore
+{%- endif %}
 
 
-def get_rag_services() -> tuple[RAGSettings, MilvusVectorStore, DocumentProcessor, MilvusRetrievalService, IngestionService]:
+def get_rag_services() -> tuple[RAGSettings, BaseVectorStore, DocumentProcessor, RetrievalService, IngestionService]:
     """Initialize RAG services for CLI usage.
     
     Creates and returns all necessary RAG service components:
@@ -40,20 +48,28 @@ def get_rag_services() -> tuple[RAGSettings, MilvusVectorStore, DocumentProcesso
     """
     settings = RAGSettings()
     embedder = EmbeddingService(settings=settings)
+{%- if cookiecutter.use_milvus %}
     vector_store = MilvusVectorStore(settings=settings, embedding_service=embedder)
+{%- elif cookiecutter.use_qdrant %}
+    vector_store = QdrantVectorStore(settings=settings, embedding_service=embedder)
+{%- elif cookiecutter.use_chromadb %}
+    vector_store = ChromaVectorStore(settings=settings, embedding_service=embedder)
+{%- elif cookiecutter.use_pgvector %}
+    vector_store = PgVectorStore(settings=settings, embedding_service=embedder)
+{%- endif %}
     processor = DocumentProcessor(settings=settings)
-    retrieval = MilvusRetrievalService(vector_store=vector_store, settings=settings)
+    retrieval = RetrievalService(vector_store=vector_store, settings=settings)
     ingestion = IngestionService(processor=processor, vector_store=vector_store)
     return settings, vector_store, processor, retrieval, ingestion
 
 
-async def list_collections_async(vector_store: MilvusVectorStore) -> None:
+async def list_collections_async(vector_store: BaseVectorStore) -> None:
     """List all collections with their stats.
     
     Args:
         vector_store: The Milvus vector store to query.
     """
-    collection_names = await vector_store.client.list_collections()
+    collection_names = await vector_store.list_collections()
     
     if not collection_names:
         info("No collections found.")
@@ -84,9 +100,10 @@ async def ingest_path_async(
     path: str,
     collection: str,
     recursive: bool,
-    vector_store: MilvusVectorStore,
+    vector_store: BaseVectorStore,
     processor: DocumentProcessor,
     ingestion: IngestionService,
+    replace: bool = True,
 ) -> None:
     """Ingest files from a path (file or directory).
     
@@ -123,33 +140,42 @@ async def ingest_path_async(
         return
     
     # Filter by allowed extensions
-    allowed_extensions = {f".{ext.value}" for ext in processor.parser.allowed}
+    allowed_extensions = {ext.value for ext in DocumentExtensions}
     files = [f for f in files if f.suffix.lower() in allowed_extensions]
     
     if not files:
         warning(f"No supported files found. Allowed: {', '.join(allowed_extensions)}")
         return
     
+    from tqdm import tqdm
+
     info(f"Ingesting {len(files)} file(s) into collection '{collection}'...")
-    
+
     success_count = 0
     error_count = 0
-    
-    for filepath in files:
-        try:
-            result = await ingestion.ingest_file(filepath=filepath, collection_name=collection)
-            if result.status.value == "done":
-                success_count += 1
-                click.echo(f"  ✓ {filepath.name}")
-            else:
+    replaced_count = 0
+
+    with tqdm(files, unit="file", desc="Ingesting", ncols=80) as pbar:
+        for filepath in pbar:
+            pbar.set_postfix_str(filepath.name[:30], refresh=True)
+            try:
+                result = await ingestion.ingest_file(filepath=filepath, collection_name=collection, replace=replace)
+                if result.status.value == "done":
+                    success_count += 1
+                    if result.message and "replaced" in result.message:
+                        replaced_count += 1
+                else:
+                    error_count += 1
+                    tqdm.write(f"  ✗ {filepath.name}: {result.error_message}")
+            except Exception as e:
                 error_count += 1
-                click.echo(f"  ✗ {filepath.name}: {result.error_message}")
-        except Exception as e:
-            error_count += 1
-            click.echo(f"  ✗ {filepath.name}: {str(e)}")
-    
+                tqdm.write(f"  ✗ {filepath.name}: {str(e)}")
+
     click.echo()
-    success(f"Ingested: {success_count} files")
+    msg = f"Ingested: {success_count} files"
+    if replaced_count > 0:
+        msg += f" ({replaced_count} replaced)"
+    success(msg)
     if error_count > 0:
         error(f"Failed: {error_count} files")
 
@@ -168,7 +194,12 @@ async def ingest_path_async(
     default=False,
     help="Recursively process directories (default: False)",
 )
-def rag_ingest(path: str, collection: str, recursive: bool):
+@click.option(
+    "--replace/--no-replace",
+    default=True,
+    help="Replace existing documents with same source path (default: True)",
+)
+def rag_ingest(path: str, collection: str, recursive: bool, replace: bool):
     """
     Ingest a file or directory into the knowledge base.
     
@@ -180,7 +211,7 @@ def rag_ingest(path: str, collection: str, recursive: bool):
     """
     _, vector_store, processor, _, ingestion = get_rag_services()
     asyncio.run(
-        ingest_path_async(path, collection, recursive, vector_store, processor, ingestion)
+        ingest_path_async(path, collection, recursive, vector_store, processor, ingestion, replace)
     )
 
 
@@ -188,7 +219,7 @@ async def search_async(
     query: str,
     collection: str,
     top_k: int,
-    retrieval: MilvusRetrievalService,
+    retrieval: RetrievalService,
 ) -> None:
     """Search the knowledge base.
     
@@ -260,7 +291,7 @@ def rag_search(query: str, collection: str, top_k: int):
 async def drop_collection_async(
     collection: str,
     yes: bool,
-    vector_store: MilvusVectorStore
+    vector_store: BaseVectorStore
 ) -> None:
     """Drop a collection.
     
@@ -314,7 +345,7 @@ def rag_stats():
 
 async def stats_async(
     settings: RAGSettings,
-    vector_store: MilvusVectorStore
+    vector_store: BaseVectorStore
 ) -> None:
     """Show RAG system statistics.
     
@@ -327,7 +358,7 @@ async def stats_async(
     
     # Collection info
     try:
-        collection_names = await vector_store.client.list_collections()
+        collection_names = await vector_store.list_collections()
         click.echo(f"\nCollections: {len(collection_names)}")
     except Exception as e:
         warning(f"Could not list collections: {e}")
@@ -359,34 +390,60 @@ async def stats_async(
     click.echo()
 
 
-{% else %}
-# Dummy commands when Milvus is not enabled
-import click
-from app.commands import command, warning
+{%- if cookiecutter.enable_google_drive_ingestion %}
 
 
-@command("rag-collections", help="List collections (requires Milvus)")
-def rag_collections():
-    warning("RAG collections require Milvus to be enabled.")
+@command("rag-sync-gdrive")
+@click.option("--collection", "-c", default="documents", help="Target collection name")
+@click.option("--folder-id", "-f", default="", help="Google Drive folder ID (empty = root)")
+def rag_sync_gdrive(collection: str, folder_id: str) -> None:
+    """Sync documents from Google Drive into a RAG collection."""
+    from app.rag.sources.google_drive import GoogleDriveSource
 
+    _, vector_store, processor, _, ingestion = get_rag_services()
+    source = GoogleDriveSource()
 
-@command("rag-ingest", help="Ingest files (requires Milvus)")
-def rag_ingest():
-    warning("RAG ingestion requires Milvus to be enabled.")
+    async def _sync():
+        result = await source.sync(
+            collection_name=collection,
+            ingestion_service=ingestion,
+            path=folder_id,
+        )
+        success(f"Synced {result.ingested}/{result.total_files} files from Google Drive")
+        if result.failed:
+            for err in result.errors:
+                warning(f"  {err}")
 
-
-@command("rag-search", help="Search knowledge base (requires Milvus)")
-def rag_search():
-    warning("RAG search requires Milvus to be enabled.")
-
-
-@command("rag-drop", help="Drop collection (requires Milvus)")
-def rag_drop():
-    warning("RAG drop requires Milvus to be enabled.")
-
-
-@command("rag-stats", help="Show RAG stats (requires Milvus)")
-def rag_stats():
-    warning("RAG stats require Milvus to be enabled.")
+    asyncio.run(_sync())
 {%- endif %}
+
+{%- if cookiecutter.enable_s3_ingestion %}
+
+
+@command("rag-sync-s3")
+@click.option("--collection", "-c", default="documents", help="Target collection name")
+@click.option("--prefix", "-p", default="", help="S3 prefix (folder path)")
+@click.option("--bucket", "-b", default="", help="S3 bucket (empty = default from settings)")
+def rag_sync_s3(collection: str, prefix: str, bucket: str) -> None:
+    """Sync documents from S3/MinIO into a RAG collection."""
+    from app.rag.sources.s3 import S3Source
+
+    _, vector_store, processor, _, ingestion = get_rag_services()
+    source = S3Source(bucket=bucket)
+
+    async def _sync():
+        result = await source.sync(
+            collection_name=collection,
+            ingestion_service=ingestion,
+            path=prefix,
+        )
+        success(f"Synced {result.ingested}/{result.total_files} files from S3")
+        if result.failed:
+            for err in result.errors:
+                warning(f"  {err}")
+
+    asyncio.run(_sync())
+{%- endif %}
+
+
 {%- endif %}

@@ -38,6 +38,9 @@ from langchain_openai import ChatOpenAI
 {%- if cookiecutter.use_anthropic %}
 from langchain_anthropic import ChatAnthropic
 {%- endif %}
+{%- if cookiecutter.use_google %}
+from langchain_google_genai import ChatGoogleGenerativeAI
+{%- endif %}
 
 from app.agents.prompts import DEFAULT_SYSTEM_PROMPT
 {%- if cookiecutter.enable_rag %}
@@ -327,24 +330,35 @@ class CrewAIAssistant:
             api_key=settings.ANTHROPIC_API_KEY,
         )
 {%- endif %}
+{%- if cookiecutter.use_google %}
+        return ChatGoogleGenerativeAI(
+            model=self.model_name,
+            temperature=self.temperature,
+            google_api_key=settings.GOOGLE_API_KEY,
+        )
+{%- endif %}
 
     def _build_agents(self) -> dict[str, Agent]:
         """Build Agent instances from config."""
         agents = {}
         llm = self._get_llm()
 
+        def get_tools_for_agent(agent_tools: list[str]) -> list:
+            """Get tool functions for an agent based on tool names."""
+            tool_map = {}
 {%- if cookiecutter.enable_rag %}
-        def get_tools_for_agent(agent_tools: list[str]) -> list:
-            """Get tool functions for an agent based on tool names."""
-            tool_map = {
-                "search_documents": SearchKnowledgeBase(),
-            }
-            return [tool_map[name] for name in agent_tools if name in tool_map]
-{%- else %}
-        def get_tools_for_agent(agent_tools: list[str]) -> list:
-            """Get tool functions for an agent based on tool names."""
-            return []
+            tool_map["search_documents"] = SearchKnowledgeBase()
 {%- endif %}
+{%- if cookiecutter.enable_web_search %}
+            from app.agents.tools.web_search import web_search_sync
+            from langchain_core.tools import tool as lc_tool
+            @lc_tool
+            def search_web(query: str) -> str:
+                """Search the web for current information."""
+                return web_search_sync(query=query)
+            tool_map["search_web"] = search_web
+{%- endif %}
+            return [tool_map[name] for name in agent_tools if name in tool_map]
 
         for agent_config in self.config.agents:
             agent = Agent(

@@ -159,7 +159,7 @@ def new(output: Path | None, no_input: bool, name: str | None) -> None:
 )
 @click.option(
     "--llm-provider",
-    type=click.Choice(["openai", "anthropic", "openrouter"]),
+    type=click.Choice(["openai", "anthropic", "google", "openrouter"]),
     default="openai",
     help="LLM provider (default: openai). Note: openrouter only works with pydantic_ai",
 )
@@ -236,9 +236,9 @@ def new(output: Path | None, no_input: bool, name: str | None) -> None:
 )
 @click.option(
     "--pdf-parser",
-    type=click.Choice(["pdfplumber", "llamaparse"]),
-    default="pdfplumber",
-    help="Choose PDF parser (pdfplumber=local/free, llamaparse=cloud/AI)",
+    type=click.Choice(["pymupdf", "llamaparse"]),
+    default="pymupdf",
+    help="PDF parser (pymupdf=local with tables/OCR, llamaparse=cloud AI 130+ formats)",
 )
 def create(
     name: str,
@@ -466,6 +466,7 @@ def templates() -> None:
     console.print("  --ai-framework deepagents       DeepAgents (agentic coding, HITL)")
     console.print("  --llm-provider openai           OpenAI (gpt-4o-mini)")
     console.print("  --llm-provider anthropic        Anthropic (claude-sonnet-4-5)")
+    console.print("  --llm-provider google           Google Gemini (gemini-2.0-flash)")
     console.print("  --llm-provider openrouter       OpenRouter (pydantic_ai only)")
     console.print("  --conversation-persistence      Save chat history to database")
     console.print("  --websocket-auth none|jwt|api_key  WebSocket auth method")

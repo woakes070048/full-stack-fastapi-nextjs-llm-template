@@ -193,27 +193,33 @@ These variables are set automatically by the generator.
 | Variable | Type | Default | Description | Dependencies |
 |----------|------|---------|-------------|--------------|
 | `enable_rag` | bool | `false` | Enable RAG functionality with vector database | - |
-| `use_milvus` | bool | `false` | Milvus vector database is selected | Computed from `enable_rag` |
+| `vector_store` | enum | `"milvus"` | Vector store backend. Values: `milvus`, `qdrant`, `chromadb`, `pgvector` | Requires `enable_rag` |
+| `use_milvus` | bool | `false` | Milvus vector database is selected | Computed from `vector_store` |
+| `use_qdrant` | bool | `false` | Qdrant vector database is selected | Computed from `vector_store` |
+| `use_chromadb` | bool | `false` | ChromaDB vector database is selected (embedded mode) | Computed from `vector_store` |
+| `use_pgvector` | bool | `false` | pgvector (PostgreSQL extension) is selected | Computed from `vector_store`, requires PostgreSQL |
 | `embedding_provider` | enum | auto-derived | Embedding model provider. Auto-derived from LLM provider: OpenAI→openai, Anthropic→voyage, OpenRouter→sentence_transformers | Auto-derived from `llm_provider` |
 | `use_openai_embeddings` | bool | `false` | OpenAI embeddings are selected | Computed from `llm_provider` |
 | `use_voyage_embeddings` | bool | `false` | Voyage AI embeddings are selected | Computed from `llm_provider` |
+| `use_gemini_embeddings` | bool | `false` | Google Gemini multimodal embeddings are selected | Computed from `llm_provider` |
 | `use_sentence_transformers` | bool | `true` | Local Sentence Transformers are selected | Computed from `llm_provider` |
 | `enable_reranker` | bool | `false` | Enable reranker for search results (set via `--reranker` CLI flag) | Computed from `--reranker` CLI flag |
 | `use_cohere_reranker` | bool | `false` | Cohere reranker is selected | Computed from `--reranker` CLI flag |
 | `use_cross_encoder_reranker` | bool | `false` | Cross-encoder reranker (sentence-transformers) is selected | Computed from `--reranker` CLI flag |
-| `pdf_parser` | enum | `"pdfplumber"` | PDF parsing method. Values: `pdfplumber`, `llamaparse` | Requires RAG |
-| `use_pdfplumber` | bool | `true` | pdfplumber (local) is selected for PDF parsing | Computed from `pdf_parser` |
+| `pdf_parser` | enum | `"pymupdf"` | PDF parsing method. Values: `pymupdf`, `llamaparse` | Requires RAG |
 | `use_llamaparse` | bool | `false` | LlamaParse (LLM-based) is selected for PDF parsing | Computed from `pdf_parser` |
 | `use_python_parser` | bool | `true` | Python-based parsing is selected (always true for non-PDF) | Always true |
 | `enable_google_drive_ingestion` | bool | `false` | Enable Google Drive as document source | Requires RAG |
+| `enable_s3_ingestion` | bool | `false` | Enable S3/MinIO as document source | Requires RAG |
+| `enable_rag_image_description` | bool | `false` | Extract images from documents and describe via LLM vision API | Requires RAG + AI agent |
 
 **Notes:**
 
-- RAG requires a vector database (Milvus)
-- Embedding provider is auto-derived from LLM provider (OpenAI→openai, Anthropic→voyage, OpenRouter→sentence_transformers)
+- RAG requires a vector database (Milvus, Qdrant, ChromaDB, or pgvector)
+- Embedding provider is auto-derived from LLM provider (OpenAI→openai, Anthropic→voyage, Google→gemini, OpenRouter→sentence_transformers)
 - Reranker is enabled via `--reranker` CLI flag (cohere, cross_encoder)
 - Cohere and Cross-Encoder rerankers improve search result relevance
-- LlamaParse requires an API key; pdfplumber is free and self-hosted
+- LlamaParse requires an API key; PyMuPDF is free and local (with tables, OCR fallback)
 - Google Drive ingestion enables direct document loading from Google Workspace
 
 ---
@@ -229,12 +235,14 @@ These variables are set automatically by the generator.
 | `use_langgraph` | bool | `false` | LangGraph (ReAct agent) is selected | Computed from `ai_framework` |
 | `use_crewai` | bool | `false` | CrewAI (multi-agent crews) is selected | Computed from `ai_framework` |
 | `use_deepagents` | bool | `false` | DeepAgents (agentic coding) is selected | Computed from `ai_framework` |
-| `llm_provider` | enum | `"openai"` | LLM provider. Values: `openai`, `anthropic`, `openrouter` | Requires `enable_ai_agent` |
+| `llm_provider` | enum | `"openai"` | LLM provider. Values: `openai`, `anthropic`, `google`, `openrouter` | Requires `enable_ai_agent` |
 | `use_openai` | bool | `true` | OpenAI is selected | Computed from `llm_provider` |
 | `use_anthropic` | bool | `false` | Anthropic is selected | Computed from `llm_provider` |
+| `use_google` | bool | `false` | Google Gemini is selected | Computed from `llm_provider` |
 | `use_openrouter` | bool | `false` | OpenRouter is selected | Computed from `llm_provider` |
 | `enable_conversation_persistence` | bool | `false` | Persist AI conversations to database | Requires `enable_ai_agent` and database |
 | `enable_langsmith` | bool | `false` | Enable LangSmith observability (tracing, prompt management) | Requires LangChain, LangGraph, or DeepAgents |
+| `enable_web_search` | bool | `false` | Enable Tavily web search tool for AI agents | Requires `enable_ai_agent` |
 
 **Notes:**
 

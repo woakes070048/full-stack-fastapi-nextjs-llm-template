@@ -29,7 +29,7 @@
   &nbsp;•&nbsp;
   <b>👥 CrewAI</b>
   &nbsp;•&nbsp;
-  <b>📄 RAG & Milvus</b>
+  <b>📄 RAG (Milvus, Qdrant, pgvector, ChromaDB)</b>
   &nbsp;•&nbsp;
   <b>🎯 Fully Type-Safe</b>
 </p>
@@ -77,6 +77,7 @@ Generated projects include **CLAUDE.md** and **AGENTS.md** files optimized for A
   <a href="https://milvus.io"><img src="https://img.shields.io/badge/Milvus-FF6B35?logoColor=white" alt="Milvus"></a>
   <a href="https://openai.com"><img src="https://img.shields.io/badge/OpenAI-412991?logo=openai&logoColor=white" alt="OpenAI"></a>
   <a href="https://anthropic.com"><img src="https://img.shields.io/badge/Anthropic-D4A373?logo=anthropic&logoColor=white" alt="Anthropic"></a>
+  <a href="https://ai.google.dev"><img src="https://img.shields.io/badge/Gemini-4285F4?logo=google&logoColor=white" alt="Google Gemini"></a>
   <a href="https://openrouter.ai"><img src="https://img.shields.io/badge/OpenRouter-6366F1?logoColor=white" alt="OpenRouter"></a>
 </p>
 
@@ -93,7 +94,9 @@ Generated projects include **CLAUDE.md** and **AGENTS.md** files optimized for A
   <a href="https://www.postgresql.org"><img src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"></a>
   <a href="https://www.mongodb.com"><img src="https://img.shields.io/badge/MongoDB-47A248?logo=mongodb&logoColor=white" alt="MongoDB"></a>
   <a href="https://redis.io"><img src="https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white" alt="Redis"></a>
-  <a href="https://milvus.io"><img src="https://img.shields.io/badge/Milvus-FF6B35?logoColor=white" alt="Milvus"></a>
+  <a href="https://milvus.io"><img src="https://img.shields.io/badge/Milvus-00A1EA?logoColor=white" alt="Milvus"></a>
+  <a href="https://qdrant.tech"><img src="https://img.shields.io/badge/Qdrant-FF6B6B?logoColor=white" alt="Qdrant"></a>
+  <a href="https://www.trychroma.com"><img src="https://img.shields.io/badge/ChromaDB-FF6F61?logoColor=white" alt="ChromaDB"></a>
   <a href="https://docs.celeryq.dev"><img src="https://img.shields.io/badge/Celery-37814A?logo=celery&logoColor=white" alt="Celery"></a>
   <a href="https://logfire.pydantic.dev"><img src="https://img.shields.io/badge/Logfire-E92063?logo=pydantic&logoColor=white" alt="Logfire"></a>
   <a href="https://sentry.io"><img src="https://img.shields.io/badge/Sentry-362D59?logo=sentry&logoColor=white" alt="Sentry"></a>
@@ -109,12 +112,15 @@ Generated projects include **CLAUDE.md** and **AGENTS.md** files optimized for A
 
 ### 🤖 AI/LLM First
 
-- **[PydanticAI](https://ai.pydantic.dev)** or **[LangChain](https://python.langchain.com)** - Choose your preferred AI framework
+- **5 AI Frameworks** - [PydanticAI](https://ai.pydantic.dev), [LangChain](https://python.langchain.com), [LangGraph](https://langchain-ai.github.io/langgraph/), [CrewAI](https://www.crewai.com), [DeepAgents](https://github.com/vstorm-co/pydantic-deepagents)
+- **4 LLM Providers** - OpenAI, Anthropic, Google Gemini, OpenRouter
+- **RAG** - Document ingestion, vector search, reranking (Milvus, Qdrant, ChromaDB, pgvector)
 - **WebSocket Streaming** - Real-time responses with full event access
 - **Conversation Persistence** - Save chat history to database
-- **Custom Tools** - Easily extend agent capabilities
-- **Multi-provider Support** - OpenAI, Anthropic, OpenRouter
-- **Observability** - Logfire for PydanticAI, LangSmith for LangChain
+- **Image Description** - Extract images from documents, describe via LLM vision
+- **Multimodal Embeddings** - Google Gemini embedding model (text + images)
+- **Document Sources** - Local files, Google Drive, S3/MinIO
+- **Observability** - Logfire for PydanticAI, LangSmith for LangChain/LangGraph/DeepAgents
 
 ### ⚡ Backend (FastAPI)
 
@@ -135,13 +141,68 @@ Generated projects include **CLAUDE.md** and **AGENTS.md** files optimized for A
 
 | Category | Integrations |
 |----------|-------------|
-| **AI Frameworks** | PydanticAI, LangChain |
+| **AI Frameworks** | PydanticAI, LangChain, LangGraph, CrewAI, DeepAgents |
+| **LLM Providers** | OpenAI, Anthropic, Google Gemini, OpenRouter |
+| **RAG / Vector Stores** | Milvus, Qdrant, ChromaDB, pgvector |
+| **RAG Sources** | Local files, Google Drive, S3/MinIO |
+| **Embeddings** | OpenAI, Voyage, Gemini (multimodal), SentenceTransformers |
 | **Caching & State** | Redis, fastapi-cache2 |
 | **Security** | Rate limiting, CORS, CSRF protection |
 | **Observability** | Logfire, LangSmith, Sentry, Prometheus |
 | **Admin** | SQLAdmin panel with auth |
 | **Events** | Webhooks, WebSockets |
 | **DevOps** | Docker, GitHub Actions, GitLab CI, Kubernetes |
+
+### 🗺️ Architecture Overview
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         FRONTEND  (Next.js 15)                          │
+│  Chat UI · Knowledge Base · Dashboard · Settings · Dark Mode · i18n     │
+└──────────────┬───────────────────────────────────────────┬───────────────┘
+               │  REST / WebSocket                        │  Vercel
+               ▼                                          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│                         BACKEND  (FastAPI)                               │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │                     AI AGENTS                                    │     │
+│  │  PydanticAI · LangChain · LangGraph · CrewAI · DeepAgents       │     │
+│  │  ────────────────────────────────────────────────────────────     │     │
+│  │  Tools: datetime · web_search (Tavily) · search_knowledge_base  │     │
+│  │  Providers: OpenAI · Anthropic · Gemini · OpenRouter             │     │
+│  └─────────────────────────────────────────────────────────────────┘     │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐     │
+│  │                     RAG PIPELINE                                 │     │
+│  │                                                                  │     │
+│  │  Sources        Parse           Chunk          Embed             │     │
+│  │  ─────────      ──────────      ──────────     ──────────────    │     │
+│  │  Local files    pdfplumber      recursive      OpenAI            │     │
+│  │  Google Drive   PyMuPDF+LLM     markdown       Voyage            │     │
+│  │  S3/MinIO       LlamaParse      fixed          Gemini (multi)    │     │
+│  │                 python-docx                     SentenceTransf.   │     │
+│  │                                                                  │     │
+│  │  Store              Search              Rank                     │     │
+│  │  ──────────────     ──────────────      ──────────────           │     │
+│  │  Milvus             Vector similarity   Cohere reranker          │     │
+│  │  Qdrant             BM25 + vector RRF   CrossEncoder             │     │
+│  │  ChromaDB           Multi-collection                             │     │
+│  │  pgvector                                                        │     │
+│  └─────────────────────────────────────────────────────────────────┘     │
+│                                                                          │
+│  Auth (JWT/API Key/OAuth) · Rate Limiting · Webhooks · Admin Panel       │
+│  Background Tasks (Celery/Taskiq/ARQ) · Django-style CLI                 │
+│  Observability (Logfire/LangSmith/Sentry/Prometheus)                     │
+└───────┬──────────────┬──────────────┬──────────────┬────────────────────┘
+        │              │              │              │
+        ▼              ▼              ▼              ▼
+   PostgreSQL       Redis         Vector DB      LLM APIs
+   MongoDB                        (Milvus/       (OpenAI/
+   SQLite                         Qdrant/        Anthropic/
+                                  ChromaDB/      Gemini)
+                                  pgvector)
+```
 
 ---
 
@@ -378,31 +439,34 @@ See [Architecture Documentation](https://github.com/vstorm-co/full-stack-ai-agen
 
 ## 🤖 AI Agent
 
-Choose between **PydanticAI** or **LangChain** when generating your project, with support for multiple LLM providers:
+Choose from **5 AI frameworks** and **4 LLM providers** when generating your project:
 
 ```bash
 # PydanticAI with OpenAI (default)
 fastapi-fullstack create my_app --ai-agent --ai-framework pydantic_ai
 
-# PydanticAI with Anthropic
-fastapi-fullstack create my_app --ai-agent --ai-framework pydantic_ai --llm-provider anthropic
+# LangGraph with Anthropic
+fastapi-fullstack create my_app --ai-agent --ai-framework langgraph --llm-provider anthropic
 
-# PydanticAI with OpenRouter
-fastapi-fullstack create my_app --ai-agent --ai-framework pydantic_ai --llm-provider openrouter
+# CrewAI with Google Gemini
+fastapi-fullstack create my_app --ai-agent --ai-framework crewai --llm-provider google
 
-# LangChain with OpenAI
-fastapi-fullstack create my_app --ai-agent --ai-framework langchain
+# DeepAgents with OpenAI
+fastapi-fullstack create my_app --ai-agent --ai-framework deepagents
 
-# LangChain with Anthropic
-fastapi-fullstack create my_app --ai-agent --ai-framework langchain --llm-provider anthropic
+# With RAG enabled
+fastapi-fullstack create my_app --ai-agent --rag --database postgresql --task-queue celery
 ```
 
-### Supported LLM Providers
+### Supported Combinations
 
-| Framework | OpenAI | Anthropic | OpenRouter |
-|-----------|:------:|:---------:|:----------:|
-| **PydanticAI** | ✓ | ✓ | ✓ |
-| **LangChain** | ✓ | ✓ | - |
+| Framework | OpenAI | Anthropic | Gemini | OpenRouter |
+|-----------|:------:|:---------:|:------:|:----------:|
+| **PydanticAI** | ✓ | ✓ | ✓ | ✓ |
+| **LangChain** | ✓ | ✓ | ✓ | - |
+| **LangGraph** | ✓ | ✓ | ✓ | - |
+| **CrewAI** | ✓ | ✓ | ✓ | - |
+| **DeepAgents** | ✓ | ✓ | ✓ | - |
 
 ### PydanticAI Integration
 
@@ -477,6 +541,52 @@ Each framework has its own observability solution:
 | **LangChain** | [LangSmith](https://smith.langchain.com) | Traces, feedback, datasets |
 
 See [AI Agent Documentation](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/ai-agent.md) for more.
+
+---
+
+## 📄 RAG (Retrieval-Augmented Generation)
+
+Enable RAG to give your AI agents access to a knowledge base built from your documents.
+
+### Vector Store Backends
+
+| Backend | Type | Docker Required | Best For |
+|---------|------|:---:|---------|
+| **Milvus** | Dedicated vector DB | Yes (3 services) | Production, large scale |
+| **Qdrant** | Dedicated vector DB | Yes (1 service) | Production, simple setup |
+| **ChromaDB** | Embedded / HTTP | No | Development, prototyping |
+| **pgvector** | PostgreSQL extension | No (uses existing PG) | Already have PostgreSQL |
+
+### Document Ingestion (CLI)
+
+```bash
+# Local files
+uv run my_app rag-ingest /path/to/document.pdf --collection docs
+uv run my_app rag-ingest /path/to/folder/ --recursive
+
+# Google Drive (service account)
+uv run my_app rag-sync-gdrive --collection docs --folder-id <drive_folder_id>
+
+# S3/MinIO
+uv run my_app rag-sync-s3 --collection docs --prefix reports/ --bucket my-bucket
+```
+
+### Embedding Providers
+
+| Provider | Model | Dimensions | Multimodal |
+|----------|-------|:---:|:---:|
+| **OpenAI** | text-embedding-3-small | 1536 | - |
+| **Voyage** | voyage-3 | 1024 | - |
+| **Gemini** | gemini-embedding-exp-03-07 | 3072 | Text + Images |
+| **SentenceTransformers** | all-MiniLM-L6-v2 | 384 | - |
+
+### Features
+
+- **Document parsing** - PDF (pdfplumber/PyMuPDF), DOCX, TXT, MD + 130+ formats via LlamaParse
+- **Image description** - Extract images from documents, describe via LLM vision API (opt-in)
+- **Chunking** - RecursiveCharacterTextSplitter with configurable size/overlap
+- **Reranking** - Cohere API or local CrossEncoder for improved search quality
+- **Agent integration** - All 5 AI frameworks get a `search_knowledge_base` tool automatically
 
 ---
 
@@ -648,6 +758,7 @@ my_project/
 │   │   ├── repositories/        # Data access layer
 │   │   ├── services/            # Business logic
 │   │   ├── agents/              # AI agents with centralized prompts
+│   │   ├── rag/                 # RAG module (vector store, embeddings, ingestion)
 │   │   ├── commands/            # Django-style CLI commands
 │   │   └── worker/              # Background tasks
 │   ├── cli/                     # Project CLI
@@ -685,8 +796,10 @@ generated_at = "2024-12-21T10:30:00+00:00"
 | **ORM** | `sqlalchemy`, `sqlmodel` | SQLModel for simplified syntax |
 | **Auth** | `jwt`, `api_key`, `both`, `none` | JWT includes user management |
 | **OAuth** | `none`, `google` | Social login |
-| **AI Framework** | `pydantic_ai`, `langchain` | Choose your AI agent framework |
-| **LLM Provider** | `openai`, `anthropic`, `openrouter` | OpenRouter only with PydanticAI |
+| **AI Framework** | `pydantic_ai`, `langchain`, `langgraph`, `crewai`, `deepagents` | Choose your AI agent framework |
+| **LLM Provider** | `openai`, `anthropic`, `google`, `openrouter` | OpenRouter only with PydanticAI |
+| **RAG** | `--rag` | Enable RAG with vector database |
+| **Vector Store** | `milvus`, `qdrant`, `chromadb`, `pgvector` | pgvector uses existing PostgreSQL |
 | **Background Tasks** | `none`, `celery`, `taskiq`, `arq` | Distributed queues |
 | **Frontend** | `none`, `nextjs` | Next.js 15 + React 19 |
 

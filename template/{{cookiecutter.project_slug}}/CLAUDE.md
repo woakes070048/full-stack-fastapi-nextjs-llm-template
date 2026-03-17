@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**{{ cookiecutter.project_name }}** - FastAPI application generated with [Full-Stack FastAPI + Next.js Template](https://github.com/vstorm-co/full-stack-ai-agent-template).
+**{{ cookiecutter.project_name }}** - FastAPI application generated with [Full-Stack AI Agent Template](https://github.com/vstorm-co/full-stack-ai-agent-template).
 
 **Stack:** FastAPI + Pydantic v2
 {%- if cookiecutter.use_postgresql %}, PostgreSQL (async){%- endif %}
@@ -15,6 +15,7 @@
 {%- if cookiecutter.enable_ai_agent and cookiecutter.use_langgraph %}, LangGraph{%- endif %}
 {%- if cookiecutter.enable_ai_agent and cookiecutter.use_crewai %}, CrewAI{%- endif %}
 {%- if cookiecutter.enable_ai_agent and cookiecutter.use_deepagents %}, DeepAgents{%- endif %}
+{%- if cookiecutter.enable_rag %}, RAG ({{ cookiecutter.vector_store }}){%- endif %}
 {%- if cookiecutter.use_celery %}, Celery{%- endif %}
 {%- if cookiecutter.use_taskiq %}, Taskiq{%- endif %}
 {%- if cookiecutter.use_frontend %}, Next.js 15{%- endif %}
@@ -45,6 +46,19 @@ bun test
 # Docker
 docker compose up -d
 {%- endif %}
+{%- if cookiecutter.enable_rag %}
+
+# RAG
+uv run {{ cookiecutter.project_slug }} rag-collections
+uv run {{ cookiecutter.project_slug }} rag-ingest /path/to/file.pdf --collection docs
+uv run {{ cookiecutter.project_slug }} rag-search "query" --collection docs
+{%- if cookiecutter.enable_google_drive_ingestion %}
+uv run {{ cookiecutter.project_slug }} rag-sync-gdrive --collection docs
+{%- endif %}
+{%- if cookiecutter.enable_s3_ingestion %}
+uv run {{ cookiecutter.project_slug }} rag-sync-s3 --collection docs
+{%- endif %}
+{%- endif %}
 ```
 
 ## Project Structure
@@ -60,6 +74,9 @@ backend/app/
 {%- if cookiecutter.enable_ai_agent %}
 ├── agents/           # AI agents
 {%- endif %}
+{%- if cookiecutter.enable_rag %}
+├── rag/              # RAG (embeddings, vector store, ingestion)
+{%- endif %}
 └── commands/         # CLI commands
 ```
 
@@ -69,14 +86,9 @@ backend/app/
 - Services raise domain exceptions (`NotFoundError`, `AlreadyExistsError`)
 - Schemas: separate `Create`, `Update`, `Response` models
 - Commands auto-discovered from `app/commands/`
-
-## Where to Find More Info
-
-Before starting complex tasks, read relevant docs:
-- **Architecture details:** `docs/architecture.md`
-- **Adding features:** `docs/adding_features.md`
-- **Testing guide:** `docs/testing.md`
-- **Code patterns:** `docs/patterns.md`
+{%- if cookiecutter.enable_rag %}
+- Document ingestion via CLI only (not API)
+{%- endif %}
 
 ## Environment Variables
 
@@ -96,10 +108,21 @@ OPENAI_API_KEY=sk-...
 {%- if cookiecutter.enable_ai_agent and cookiecutter.use_anthropic %}
 ANTHROPIC_API_KEY=sk-ant-...
 {%- endif %}
+{%- if cookiecutter.enable_ai_agent and cookiecutter.use_google %}
+GOOGLE_API_KEY=...
+{%- endif %}
 {%- if cookiecutter.enable_logfire %}
 LOGFIRE_TOKEN=your-token
 {%- endif %}
 {%- if cookiecutter.enable_langsmith %}
 LANGCHAIN_API_KEY=your-api-key
+{%- endif %}
+{%- if cookiecutter.use_milvus %}
+MILVUS_HOST=localhost
+MILVUS_PORT=19530
+{%- endif %}
+{%- if cookiecutter.use_qdrant %}
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
 {%- endif %}
 ```

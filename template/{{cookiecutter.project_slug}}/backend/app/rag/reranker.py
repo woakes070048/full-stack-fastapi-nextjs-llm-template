@@ -140,7 +140,7 @@ class CohereReranker(BaseReranker):
             )
             
             elapsed = time.time() - start_time
-            print(f"[RERANKER] Cohere rerank completed in {elapsed:.3f}s")
+            logger.info(f"[RERANKER] Cohere rerank completed in {elapsed:.3f}s")
             
             # Map reranked results back to SearchResult objects
             reranked = []
@@ -173,7 +173,7 @@ class CohereReranker(BaseReranker):
         # Just verify we can import the client
         try:
             from cohere import AsyncClient
-            print(f"[RERANKER] Cohere reranker configured with model: {self.model}")
+            logger.info(f"[RERANKER] Cohere reranker configured with model: {self.model}")
         except ImportError:
             logger.warning("[RERANKER] cohere package not installed")
 
@@ -218,13 +218,13 @@ class CrossEncoderReranker(BaseReranker):
             # Ensure cache directory exists
             app_settings.MODELS_CACHE_DIR.mkdir(exist_ok=True, parents=True)
             
-            print(f"[RERANKER] Loading Cross Encoder model: {self.model_name}")
+            logger.info(f"[RERANKER] Loading Cross Encoder model: {self.model_name}")
             self._model = CrossEncoder(
                 self.model_name,
                 cache_folder=cache_path,
                 token=settings.HF_TOKEN,
             )
-            print(f"[RERANKER] Cross Encoder model loaded successfully")
+            logger.info(f"[RERANKER] Cross Encoder model loaded successfully")
         return self._model
     
     @property
@@ -266,7 +266,7 @@ class CrossEncoderReranker(BaseReranker):
             scores = self.model.predict(pairs)
             
             elapsed = time.time() - start_time
-            print(f"[RERANKER] Cross Encoder reranking completed in {elapsed:.3f}s")
+            logger.info(f"[RERANKER] Cross Encoder reranking completed in {elapsed:.3f}s")
             
             # Create new results with cross-encoder scores
             scored_results = []
@@ -302,9 +302,9 @@ class CrossEncoderReranker(BaseReranker):
     
     def warmup(self) -> None:
         """Trigger model download and loading."""
-        print(f"[RERANKER] Cross Encoder warmup: loading model {self.model_name}")
+        logger.info(f"[RERANKER] Cross Encoder warmup: loading model {self.model_name}")
         _ = self.model
-        print(f"[RERANKER] Cross Encoder ready: {self.model_name}")
+        logger.info(f"[RERANKER] Cross Encoder ready: {self.model_name}")
 
 {%- endif %}
 
@@ -330,13 +330,13 @@ class RerankService:
         if config.model == "cohere":
             from app.core.config import settings as app_settings
             self._reranker = CohereReranker(api_key=app_settings.COHERE_API_KEY)
-            print("[RERANKER] Using Cohere reranker")
+            logger.info("[RERANKER] Using Cohere reranker")
         {%- endif %}
         
         {%- if cookiecutter.use_cross_encoder_reranker %}
         if config.model == "cross_encoder":
             self._reranker = CrossEncoderReranker()
-            print("[RERANKER] Using Cross Encoder reranker")
+            logger.info("[RERANKER] Using Cross Encoder reranker")
         {%- endif %}
         
         if self._reranker is None:
@@ -401,8 +401,8 @@ class RerankService:
     def warmup(self) -> None:
         """Initialize the reranker model if configured."""
         if self._reranker:
-            print(f"[RERANKER] Warming up {self._reranker.name}")
+            logger.info(f"[RERANKER] Warming up {self._reranker.name}")
             self._reranker.warmup()
-            print(f"[RERANKER] {self._reranker.name} warmup complete")
+            logger.info(f"[RERANKER] {self._reranker.name} warmup complete")
 
 {%- endif %}

@@ -2,7 +2,9 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks";
+import { apiClient, ApiError } from "@/lib/api-client";
 import { Button, Card, Input, Label, Badge } from "@/components/ui";
 import { ThemeToggle } from "@/components/theme";
 import { User, Mail, Calendar, Shield, Settings } from "lucide-react";
@@ -10,6 +12,30 @@ import { User, Mail, Calendar, Shield, Settings } from "lucide-react";
 export default function ProfilePage() {
   const { user, isAuthenticated, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [editEmail, setEditEmail] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEdit = () => {
+    if (!isEditing && user) {
+      setEditEmail(user.email);
+    }
+    setIsEditing(!isEditing);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await apiClient.patch("/users/me", { email: editEmail });
+      toast.success("Profile updated");
+      setIsEditing(false);
+      window.location.reload();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to update profile";
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!isAuthenticated || !user) {
     return (
@@ -57,7 +83,7 @@ export default function ProfilePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={handleEdit}
               className="self-start h-10"
             >
               <Settings className="mr-2 h-4 w-4" />
@@ -77,7 +103,8 @@ export default function ProfilePage() {
               <Input
                 id="email"
                 type="email"
-                value={user.email}
+                value={isEditing ? editEmail : user.email}
+                onChange={(e) => setEditEmail(e.target.value)}
                 disabled={!isEditing}
                 className={!isEditing ? "bg-muted" : ""}
               />
@@ -93,10 +120,12 @@ export default function ProfilePage() {
 
           {isEditing && (
             <div className="mt-4 flex flex-col sm:flex-row justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsEditing(false)} className="h-10">
+              <Button variant="outline" onClick={handleEdit} className="h-10">
                 Cancel
               </Button>
-              <Button className="h-10">Save Changes</Button>
+              <Button className="h-10" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
             </div>
           )}
         </Card>

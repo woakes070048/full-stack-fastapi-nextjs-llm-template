@@ -1,94 +1,96 @@
+import logging
 from abc import ABC, abstractmethod
 
 from app.rag.models import CollectionInfo, Document, SearchResult, DocumentInfo
 
+logger = logging.getLogger(__name__)
+
 
 class BaseVectorStore(ABC):
-    """Abstract base class for vector store implementations.
-
-    Defines the interface that all vector store providers must implement.
-    """
+    """Abstract base class for vector store implementations."""
 
     @abstractmethod
     async def insert_document(self, collection_name: str, document: Document) -> None:
-        """Embeds and stores document chunks.
-
-        Args:
-            collection_name: Name of the collection to insert into.
-            document: Document object containing chunked pages to embed and store.
-        """
-        pass
+        """Embeds and stores document chunks."""
 
     @abstractmethod
     async def search(
         self, collection_name: str, query: str, limit: int = 4, filter: str = ""
     ) -> list[SearchResult]:
-        """Retrieves similar chunks based on a text query.
-
-        Args:
-            collection_name: Name of the collection to search in.
-            query: The text query to search for.
-            limit: Maximum number of results to return.
-            filter: Optional filter expression for the search.
-
-        Returns:
-            List of search results sorted by relevance.
-        """
-        pass
+        """Retrieves similar chunks based on a text query."""
 
     @abstractmethod
     async def delete_collection(self, collection_name: str) -> None:
-        """Removes a collection and all its data.
-
-        Args:
-            collection_name: Name of the collection to delete.
-        """
-        pass
+        """Removes a collection and all its data."""
 
     @abstractmethod
     async def delete_document(self, collection_name: str, document_id: str) -> None:
-        """Removes all chunks associated with a document ID.
-
-        Args:
-            collection_name: Name of the collection containing the document.
-            document_id: ID of the document to remove.
-        """
-        pass
+        """Removes all chunks associated with a document ID."""
 
     @abstractmethod
     async def get_collection_info(self, collection_name: str) -> CollectionInfo:
-        """Returns metadata and stats about a collection.
-
-        Args:
-            collection_name: Name of the collection to get info for.
-
-        Returns:
-            CollectionInfo object with collection metadata.
-        """
-        pass
+        """Returns metadata and stats about a collection."""
 
     @abstractmethod
     async def list_collections(self) -> list[str]:
-        """Returns list of all collection names.
-
-        Returns:
-            List of collection names as strings.
-        """
-        pass
+        """Returns list of all collection names."""
 
     @abstractmethod
     async def get_documents(self, collection_name: str) -> list[DocumentInfo]:
-        """Returns list of unique documents in a collection.
+        """Returns list of unique documents in a collection."""
 
-        Args:
-            collection_name: Name of the collection to get documents from.
+    def _build_chunk_metadata(self, chunk, document: Document) -> dict:
+        """Build metadata dict for a chunk."""
+        meta = {
+            "page_num": chunk.page_num,
+            "chunk_num": chunk.chunk_num,
+{%- if cookiecutter.enable_rag_image_description %}
+            "has_images": bool(getattr(chunk, "images", None)),
+            "image_count": len(getattr(chunk, "images", [])),
+{%- endif %}
+            **document.metadata.model_dump(),
+        }
+        return meta
 
-        Returns:
-            List of DocumentInfo objects with document metadata.
-        """
-        pass
+    def _sanitize_id(self, document_id: str) -> str:
+        """Sanitize document_id to prevent filter injection."""
+        return document_id.replace('"', "").replace("\\", "")
+
+    def _group_documents(self, results: list[dict]) -> list[DocumentInfo]:
+        """Group query results by parent_doc_id into DocumentInfo list."""
+        doc_map: dict[str, dict] = {}
+        for item in results:
+            doc_id = item.get("parent_doc_id")
+            metadata = item.get("metadata", {})
+            if doc_id and doc_id not in doc_map:
+                doc_map[doc_id] = {
+                    "document_id": doc_id,
+                    "filename": metadata.get("filename"),
+                    "filesize": metadata.get("filesize"),
+                    "filetype": metadata.get("filetype"),
+                    "additional_info": {
+                        "source_path": metadata.get("source_path", ""),
+                        "content_hash": metadata.get("content_hash", ""),
+                        **(metadata.get("additional_info") or {}),
+                    },
+                    "chunk_count": 0,
+                }
+            if doc_id:
+                doc_map[doc_id]["chunk_count"] += 1
+        return [
+            DocumentInfo(
+                document_id=d["document_id"],
+                filename=d.get("filename"),
+                filesize=d.get("filesize"),
+                filetype=d.get("filetype"),
+                chunk_count=d["chunk_count"],
+                additional_info=d.get("additional_info"),
+            )
+            for d in doc_map.values()
+        ]
 
 
+{%- if cookiecutter.use_milvus %}
 from pymilvus import AsyncMilvusClient, DataType
 
 from app.core.config import settings as app_settings
@@ -97,19 +99,9 @@ from app.rag.embeddings import EmbeddingService
 
 
 class MilvusVectorStore(BaseVectorStore):
-    """Milvus vector store implementation.
-
-    Provides vector storage and retrieval capabilities using Milvus.
-    Handles document embedding, storage, and similarity search.
-    """
+    """Milvus vector store implementation."""
 
     def __init__(self, settings: RAGSettings, embedding_service: EmbeddingService):
-        """Initialize the Milvus vector store.
-
-        Args:
-            settings: RAG configuration settings.
-            embedding_service: Service for generating text embeddings.
-        """
         self.settings = settings
         self.embedder = embedding_service
         self.client = AsyncMilvusClient(
@@ -117,12 +109,6 @@ class MilvusVectorStore(BaseVectorStore):
         )
 
     async def _ensure_collection(self, name: str):
-        """Ensure a collection exists, creating it if necessary.
-
-        Args:
-            name: Name of the collection to ensure exists.
-        """
-        # Create collection if it doesn't exist
         if not await self.client.has_collection(name):
             schema = self.client.create_schema(auto_id=False)
             schema.add_field("id", DataType.VARCHAR, is_primary=True, max_length=100)
@@ -133,66 +119,32 @@ class MilvusVectorStore(BaseVectorStore):
             )
             schema.add_field("metadata", DataType.JSON)
             await self.client.create_collection(name, schema=schema, metric_type="COSINE")
-            
-        # Check and create index if missing
-        # load_collection will fail without an index
         indexes = await self.client.list_indexes(name)
         if not indexes:
             index_params = self.client.prepare_index_params()
-            index_params.add_index(
-                field_name="vector",
-                index_type="AUTOINDEX",  # Standard for most use cases
-                metric_type="COSINE"     # Matches your original metric
-            )
+            index_params.add_index(field_name="vector", index_type="AUTOINDEX", metric_type="COSINE")
             await self.client.create_index(collection_name=name, index_params=index_params)
-        
         await self.client.load_collection(name)
 
     async def insert_document(self, collection_name: str, document: Document) -> None:
-        """Embed and store document chunks in Milvus.
-
-        Args:
-            collection_name: Name of the collection to insert into.
-            document: Document object with chunked pages to embed and store.
-
-        Raises:
-            ValueError: If document has no chunked pages.
-        """
         await self._ensure_collection(collection_name)
-
         if not document.chunked_pages:
-            raise ValueError("Document has no chunked pages. Did you run the processor?")
-
+            raise ValueError("Document has no chunked pages.")
         vectors = self.embedder.embed_document(document)
-
         data = [
             {
                 "id": chunk.chunk_id,
                 "parent_doc_id": chunk.parent_doc_id,
                 "content": chunk.chunk_content,
                 "vector": vectors[i],
-                "metadata": {"page_num": chunk.page_num, **document.metadata.model_dump()},
+                "metadata": self._build_chunk_metadata(chunk, document),
             }
             for i, chunk in enumerate(document.chunked_pages)
         ]
         await self.client.insert(collection_name, data=data)
 
-    async def search(
-        self, collection_name: str, query: str, limit: int = 4, filter: str = ""
-    ) -> list[SearchResult]:
-        """Search for similar chunks using vector similarity.
-
-        Args:
-            collection_name: Name of the collection to search in.
-            query: The text query to search for.
-            limit: Maximum number of results to return.
-            filter: Optional filter expression for the search.
-
-        Returns:
-            List of search results sorted by relevance.
-        """
+    async def search(self, collection_name: str, query: str, limit: int = 4, filter: str = "") -> list[SearchResult]:
         query_vector = self.embedder.embed_query(query)
-
         results = await self.client.search(
             collection_name=collection_name,
             data=[query_vector],
@@ -200,7 +152,6 @@ class MilvusVectorStore(BaseVectorStore):
             filter=filter,
             output_fields=["content", "parent_doc_id", "metadata"],
         )
-
         return [
             SearchResult(
                 content=hit["entity"]["content"],
@@ -212,101 +163,367 @@ class MilvusVectorStore(BaseVectorStore):
         ]
 
     async def get_collection_info(self, collection_name: str) -> CollectionInfo:
-        """Get metadata and statistics about a collection.
-
-        Args:
-            collection_name: Name of the collection to get info for.
-
-        Returns:
-            CollectionInfo object with collection metadata.
-        """
         count = await self.client.get_collection_stats(collection_name)
-        
+        return CollectionInfo(name=collection_name, total_vectors=count.get("row_count", 0), dim=self.settings.embeddings_config.dim)
+
+    async def delete_collection(self, collection_name: str) -> None:
+        await self.client.drop_collection(collection_name)
+
+    async def delete_document(self, collection_name: str, document_id: str) -> None:
+        sanitized = self._sanitize_id(document_id)
+        await self.client.delete(collection_name=collection_name, filter=f'parent_doc_id == "{sanitized}"')
+
+    async def get_documents(self, collection_name: str) -> list[DocumentInfo]:
+        await self._ensure_collection(collection_name)
+        results = await self.client.query(collection_name=collection_name, filter="", output_fields=["parent_doc_id", "metadata"], limit=10000)
+        return self._group_documents(results)
+
+    async def list_collections(self) -> list[str]:
+        return await self.client.list_collections()
+{%- endif %}
+
+
+{%- if cookiecutter.use_qdrant %}
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.models import Distance, FilterSelector, PointStruct, VectorParams, Filter, FieldCondition, MatchValue
+
+from app.core.config import settings as app_settings
+from app.rag.config import RAGSettings
+from app.rag.embeddings import EmbeddingService
+
+
+class QdrantVectorStore(BaseVectorStore):
+    """Qdrant vector store implementation."""
+
+    def __init__(self, settings: RAGSettings, embedding_service: EmbeddingService):
+        self.settings = settings
+        self.embedder = embedding_service
+        self.client = AsyncQdrantClient(
+            host=app_settings.QDRANT_HOST,
+            port=app_settings.QDRANT_PORT,
+            api_key=app_settings.QDRANT_API_KEY or None,
+        )
+
+    async def _ensure_collection(self, name: str):
+        collections = await self.client.get_collections()
+        if name not in [c.name for c in collections.collections]:
+            await self.client.create_collection(
+                collection_name=name,
+                vectors_config=VectorParams(
+                    size=self.settings.embeddings_config.dim,
+                    distance=Distance.COSINE,
+                ),
+            )
+
+    async def insert_document(self, collection_name: str, document: Document) -> None:
+        await self._ensure_collection(collection_name)
+        if not document.chunked_pages:
+            raise ValueError("Document has no chunked pages.")
+        vectors = self.embedder.embed_document(document)
+        points = [
+            PointStruct(
+                id=chunk.chunk_id,
+                vector=vectors[i],
+                payload={
+                    "content": chunk.chunk_content,
+                    "parent_doc_id": chunk.parent_doc_id,
+                    "metadata": self._build_chunk_metadata(chunk, document),
+                },
+            )
+            for i, chunk in enumerate(document.chunked_pages)
+        ]
+        await self.client.upsert(collection_name=collection_name, points=points)
+
+    async def search(self, collection_name: str, query: str, limit: int = 4, filter: str = "") -> list[SearchResult]:
+        query_vector = self.embedder.embed_query(query)
+        results = await self.client.search(
+            collection_name=collection_name,
+            query_vector=query_vector,
+            limit=limit,
+        )
+        return [
+            SearchResult(
+                content=hit.payload.get("content", ""),
+                score=hit.score,
+                metadata=hit.payload.get("metadata", {}),
+                parent_doc_id=hit.payload.get("parent_doc_id"),
+            )
+            for hit in results
+        ]
+
+    async def get_collection_info(self, collection_name: str) -> CollectionInfo:
+        info = await self.client.get_collection(collection_name)
         return CollectionInfo(
             name=collection_name,
-            total_vectors=count.get("row_count", 0),
+            total_vectors=info.points_count or 0,
             dim=self.settings.embeddings_config.dim,
         )
 
     async def delete_collection(self, collection_name: str) -> None:
-        """Delete an entire collection and all its data.
-
-        Args:
-            collection_name: Name of the collection to delete.
-        """
-        await self.client.drop_collection(collection_name)
+        await self.client.delete_collection(collection_name)
 
     async def delete_document(self, collection_name: str, document_id: str) -> None:
-        """Delete all chunks associated with a document ID.
-
-        Args:
-            collection_name: Name of the collection containing the document.
-            document_id: ID of the document to remove.
-        """
-        filter_expr = f'parent_doc_id == "{document_id}"'
-        await self.client.delete(collection_name=collection_name, filter=filter_expr)
+        sanitized = self._sanitize_id(document_id)
+        await self.client.delete(
+            collection_name=collection_name,
+            points_selector=FilterSelector(filter=Filter(
+                must=[FieldCondition(key="parent_doc_id", match=MatchValue(value=sanitized))]
+            )),
+        )
 
     async def get_documents(self, collection_name: str) -> list[DocumentInfo]:
-        """Get all unique documents in a collection.
-
-        Queries the collection to find all unique parent_doc_id values
-        and their associated metadata.
-
-        Args:
-            collection_name: Name of the collection to get documents from.
-
-        Returns:
-            List of DocumentInfo objects with document metadata.
-        """
         await self._ensure_collection(collection_name)
-        
-        # Query to get unique documents with their metadata
-        # We use a group by on parent_doc_id to get unique documents
-        results = await self.client.query(
-            collection_name=collection_name,
-            filter="",
-            output_fields=["parent_doc_id", "metadata"],
-            limit=10000,  # Adjust as needed for large collections
-        )
-        
-        if not results:
-            return []
-        
-        # Group by parent_doc_id and count chunks
-        doc_map: dict[str, dict] = {}
-        for item in results:
-            doc_id = item.get("parent_doc_id")
-            metadata = item.get("metadata", {})
-            
-            if doc_id and doc_id not in doc_map:
-                doc_map[doc_id] = {
-                    "document_id": doc_id,
-                    "filename": metadata.get("filename"),
-                    "filesize": metadata.get("filesize"),
-                    "filetype": metadata.get("filetype"),
-                    "additional_info": metadata.get("additional_info"),
-                    "chunk_count": 0,
-                }
-            
-            if doc_id:
-                doc_map[doc_id]["chunk_count"] += 1
-        
-        return [
-            DocumentInfo(
-                document_id=data["document_id"],
-                filename=data.get("filename"),
-                filesize=data.get("filesize"),
-                filetype=data.get("filetype"),
-                chunk_count=data["chunk_count"],
-                additional_info=data.get("additional_info"),
-            )
-            for data in doc_map.values()
+        records, _ = await self.client.scroll(collection_name=collection_name, limit=10000, with_payload=True)
+        results = [
+            {"parent_doc_id": r.payload.get("parent_doc_id"), "metadata": r.payload.get("metadata", {})}
+            for r in records
         ]
+        return self._group_documents(results)
 
     async def list_collections(self) -> list[str]:
-        """List all available collection names.
+        collections = await self.client.get_collections()
+        return [c.name for c in collections.collections]
+{%- endif %}
 
-        Returns:
-            List of collection names as strings.
-        """
-        return await self.client.list_collections()
+
+{%- if cookiecutter.use_chromadb %}
+import chromadb
+
+from app.core.config import settings as app_settings
+from app.rag.config import RAGSettings
+from app.rag.embeddings import EmbeddingService
+
+
+class ChromaVectorStore(BaseVectorStore):
+    """ChromaDB vector store implementation (embedded mode)."""
+
+    def __init__(self, settings: RAGSettings, embedding_service: EmbeddingService):
+        self.settings = settings
+        self.embedder = embedding_service
+        if app_settings.CHROMA_HOST:
+            self.client = chromadb.HttpClient(
+                host=app_settings.CHROMA_HOST,
+                port=app_settings.CHROMA_PORT,
+            )
+        else:
+            self.client = chromadb.PersistentClient(path=app_settings.CHROMA_PERSIST_DIR)
+
+    def _get_collection(self, name: str):
+        return self.client.get_or_create_collection(
+            name=name,
+            metadata={"hnsw:space": "cosine"},
+        )
+
+    async def insert_document(self, collection_name: str, document: Document) -> None:
+        if not document.chunked_pages:
+            raise ValueError("Document has no chunked pages.")
+        collection = self._get_collection(collection_name)
+        vectors = self.embedder.embed_document(document)
+        ids = [chunk.chunk_id for chunk in document.chunked_pages]
+        documents = [chunk.chunk_content for chunk in document.chunked_pages]
+        metadatas = [
+            {
+                "parent_doc_id": chunk.parent_doc_id or "",
+                "page_num": chunk.page_num,
+                "chunk_num": chunk.chunk_num,
+                "filename": document.metadata.filename,
+                "filesize": document.metadata.filesize,
+                "filetype": document.metadata.filetype,
+            }
+            for chunk in document.chunked_pages
+        ]
+        collection.upsert(ids=ids, embeddings=vectors, documents=documents, metadatas=metadatas)
+
+    async def search(self, collection_name: str, query: str, limit: int = 4, filter: str = "") -> list[SearchResult]:
+        collection = self._get_collection(collection_name)
+        query_vector = self.embedder.embed_query(query)
+        results = collection.query(query_embeddings=[query_vector], n_results=limit, include=["documents", "metadatas", "distances"])
+        search_results = []
+        for i in range(len(results["ids"][0])):
+            metadata = results["metadatas"][0][i] if results["metadatas"] else {}
+            search_results.append(SearchResult(
+                content=results["documents"][0][i] if results["documents"] else "",
+                score=1.0 - (results["distances"][0][i] if results["distances"] else 0.0),
+                metadata=metadata,
+                parent_doc_id=metadata.get("parent_doc_id"),
+            ))
+        return search_results
+
+    async def get_collection_info(self, collection_name: str) -> CollectionInfo:
+        collection = self._get_collection(collection_name)
+        return CollectionInfo(name=collection_name, total_vectors=collection.count(), dim=self.settings.embeddings_config.dim)
+
+    async def delete_collection(self, collection_name: str) -> None:
+        self.client.delete_collection(collection_name)
+
+    async def delete_document(self, collection_name: str, document_id: str) -> None:
+        collection = self._get_collection(collection_name)
+        sanitized = self._sanitize_id(document_id)
+        collection.delete(where={"parent_doc_id": sanitized})
+
+    async def get_documents(self, collection_name: str) -> list[DocumentInfo]:
+        collection = self._get_collection(collection_name)
+        all_data = collection.get(include=["metadatas"])
+        results = [
+            {"parent_doc_id": m.get("parent_doc_id"), "metadata": m}
+            for m in (all_data["metadatas"] or [])
+        ]
+        return self._group_documents(results)
+
+    async def list_collections(self) -> list[str]:
+        return [c.name for c in self.client.list_collections()]
+{%- endif %}
+
+
+{%- if cookiecutter.use_pgvector %}
+import json
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
+
+from app.core.config import settings as app_settings
+from app.rag.config import RAGSettings
+from app.rag.embeddings import EmbeddingService
+
+
+def _validate_collection_name(name: str) -> str:
+    """Validate collection name to prevent SQL injection."""
+    import re
+    if not re.match(r"^[a-zA-Z0-9_]+$", name):
+        raise ValueError(f"Invalid collection name: {name}. Only alphanumeric and underscores allowed.")
+    return name
+
+
+class PgVectorStore(BaseVectorStore):
+    """PostgreSQL + pgvector implementation.
+
+    Uses the existing PostgreSQL database with pgvector extension.
+    No additional Docker services needed.
+    """
+
+    def __init__(self, settings: RAGSettings, embedding_service: EmbeddingService):
+        self.settings = settings
+        self.embedder = embedding_service
+        self.dim = settings.embeddings_config.dim
+        self.engine = create_async_engine(app_settings.DATABASE_URL, echo=False)
+        self.async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
+
+    def _table(self, name: str) -> str:
+        """Get validated table name for a collection."""
+        return f"rag_{_validate_collection_name(name)}"
+
+    async def _ensure_collection(self, name: str):
+        """Create table for collection if not exists."""
+        table = self._table(name)
+        async with self.async_session() as session:
+            await session.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await session.execute(text(f"""
+                CREATE TABLE IF NOT EXISTS {table} (
+                    id VARCHAR(100) PRIMARY KEY,
+                    parent_doc_id VARCHAR(100),
+                    content TEXT,
+                    embedding vector({self.dim}),
+                    metadata JSONB DEFAULT '{% raw %}{}{% endraw %}'::jsonb
+                )
+            """))
+            await session.execute(text(f"""
+                CREATE INDEX IF NOT EXISTS {table}_embedding_idx
+                ON {table} USING hnsw (embedding vector_cosine_ops)
+            """))
+            await session.commit()
+
+    async def insert_document(self, collection_name: str, document: Document) -> None:
+        table = self._table(collection_name)
+        await self._ensure_collection(collection_name)
+        if not document.chunked_pages:
+            raise ValueError("Document has no chunked pages.")
+        vectors = self.embedder.embed_document(document)
+        async with self.async_session() as session:
+            for i, chunk in enumerate(document.chunked_pages):
+                meta = self._build_chunk_metadata(chunk, document)
+                await session.execute(
+                    text(f"""
+                        INSERT INTO {table} (id, parent_doc_id, content, embedding, metadata)
+                        VALUES (:id, :parent_doc_id, :content, :embedding, :metadata)
+                        ON CONFLICT (id) DO UPDATE SET content = :content, embedding = :embedding, metadata = :metadata
+                    """),
+                    {
+                        "id": chunk.chunk_id,
+                        "parent_doc_id": chunk.parent_doc_id,
+                        "content": chunk.chunk_content,
+                        "embedding": str(vectors[i]),
+                        "metadata": json.dumps(meta),
+                    },
+                )
+            await session.commit()
+
+    async def search(self, collection_name: str, query: str, limit: int = 4, filter: str = "") -> list[SearchResult]:
+        table = self._table(collection_name)
+        query_vector = self.embedder.embed_query(query)
+        async with self.async_session() as session:
+            result = await session.execute(
+                text(f"""
+                    SELECT content, parent_doc_id, metadata,
+                           1 - (embedding <=> :query_vec) AS score
+                    FROM {table}
+                    ORDER BY embedding <=> :query_vec
+                    LIMIT :limit
+                """),
+                {"query_vec": str(query_vector), "limit": limit},
+            )
+            rows = result.fetchall()
+        return [
+            SearchResult(
+                content=row[0],
+                score=float(row[3]),
+                metadata=row[2] if isinstance(row[2], dict) else json.loads(row[2]),
+                parent_doc_id=row[1],
+            )
+            for row in rows
+        ]
+
+    async def get_collection_info(self, collection_name: str) -> CollectionInfo:
+        table = self._table(collection_name)
+        async with self.async_session() as session:
+            result = await session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            count = result.scalar() or 0
+        return CollectionInfo(name=collection_name, total_vectors=count, dim=self.dim)
+
+    async def delete_collection(self, collection_name: str) -> None:
+        table = self._table(collection_name)
+        async with self.async_session() as session:
+            await session.execute(text(f"DROP TABLE IF EXISTS {table}"))
+            await session.commit()
+
+    async def delete_document(self, collection_name: str, document_id: str) -> None:
+        table = self._table(collection_name)
+        sanitized = self._sanitize_id(document_id)
+        async with self.async_session() as session:
+            await session.execute(
+                text(f"DELETE FROM {table} WHERE parent_doc_id = :doc_id"),
+                {"doc_id": sanitized},
+            )
+            await session.commit()
+
+    async def get_documents(self, collection_name: str) -> list[DocumentInfo]:
+        table = self._table(collection_name)
+        await self._ensure_collection(collection_name)
+        async with self.async_session() as session:
+            result = await session.execute(
+                text(f"SELECT parent_doc_id, metadata FROM {table}")
+            )
+            rows = result.fetchall()
+        results = [
+            {"parent_doc_id": row[0], "metadata": row[1] if isinstance(row[1], dict) else json.loads(row[1])}
+            for row in rows
+        ]
+        return self._group_documents(results)
+
+    async def list_collections(self) -> list[str]:
+        async with self.async_session() as session:
+            result = await session.execute(
+                text("SELECT table_name FROM information_schema.tables WHERE table_name LIKE 'rag_%' AND table_schema = 'public'")
+            )
+            return [row[0].replace("rag_", "") for row in result.fetchall()]
+{%- endif %}

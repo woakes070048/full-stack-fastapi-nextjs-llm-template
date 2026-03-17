@@ -46,6 +46,10 @@ use_nginx = "{{ cookiecutter.use_nginx }}" == "True"
 enable_logfire = "{{ cookiecutter.enable_logfire }}" == "True"
 enable_langsmith = "{{ cookiecutter.enable_langsmith }}" == "True"
 enable_rag = "{{ cookiecutter.enable_rag }}" == "True"
+enable_rag_image_description = "{{ cookiecutter.enable_rag_image_description }}" == "True"
+enable_google_drive_ingestion = "{{ cookiecutter.enable_google_drive_ingestion }}" == "True"
+enable_s3_ingestion = "{{ cookiecutter.enable_s3_ingestion }}" == "True"
+enable_web_search = "{{ cookiecutter.enable_web_search }}" == "True"
 
 
 def remove_file(path: str) -> None:
@@ -119,6 +123,8 @@ else:
         remove_file(os.path.join(backend_app, "agents", "crewai_assistant.py"))
     if not use_deepagents:
         remove_file(os.path.join(backend_app, "agents", "deepagents_assistant.py"))
+    if not enable_web_search:
+        remove_file(os.path.join(backend_app, "agents", "tools", "web_search.py"))
 
 # --- Example CRUD files ---
 if not include_example_crud or not use_database:
@@ -208,6 +214,24 @@ if not enable_rag:
     remove_file(os.path.join(backend_app, "worker", "tasks", "rag_ingestion.py"))
     # Remove RAG agent tool
     remove_file(os.path.join(backend_app, "agents", "tools", "rag_tool.py"))
+    # Remove frontend RAG files
+    if use_frontend:
+        frontend_src = os.path.join(os.getcwd(), "frontend", "src")
+        remove_file(os.path.join(frontend_src, "lib", "rag-api.ts"))
+        remove_dir(os.path.join(frontend_src, "app", "api", "v1", "rag"))
+        # Remove RAG management page (both paths - i18n variant may be moved later)
+        remove_dir(os.path.join(frontend_src, "app", "[locale]", "(dashboard)", "rag"))
+        remove_dir(os.path.join(frontend_src, "app", "(dashboard)", "rag"))
+else:
+    # RAG enabled — remove optional components if not enabled
+    if not enable_rag_image_description:
+        remove_file(os.path.join(backend_app, "rag", "image_describer.py"))
+    if not enable_google_drive_ingestion:
+        remove_file(os.path.join(backend_app, "rag", "sources", "google_drive.py"))
+    if not enable_s3_ingestion:
+        remove_file(os.path.join(backend_app, "rag", "sources", "s3.py"))
+    if not enable_google_drive_ingestion and not enable_s3_ingestion:
+        remove_dir(os.path.join(backend_app, "rag", "sources"))
 
 # --- Cleanup stub files (files with only docstring, no code) ---
 core_dir = os.path.join(backend_app, "core")

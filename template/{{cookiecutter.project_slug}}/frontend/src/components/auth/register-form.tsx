@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui";
 import { ApiError } from "@/lib/api-client";
@@ -30,6 +31,7 @@ export function RegisterForm() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -37,13 +39,12 @@ export function RegisterForm() {
 
     try {
       await register({ email, password, name: name || undefined });
+      toast.success("Account created! Please log in.");
       router.push(ROUTES.LOGIN + "?registered=true");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Registration failed. Please try again.");
-      }
+      const message = err instanceof ApiError ? err.message : "Registration failed. Please try again.";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

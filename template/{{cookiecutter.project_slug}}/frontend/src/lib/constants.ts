@@ -37,6 +37,9 @@ export const ROUTES = {
 {%- endif %}
   PROFILE: "/profile",
   SETTINGS: "/settings",
+{%- if cookiecutter.enable_rag %}
+  RAG: "/rag",
+{%- endif %}
 } as const;
 {%- if cookiecutter.enable_ai_agent %}
 

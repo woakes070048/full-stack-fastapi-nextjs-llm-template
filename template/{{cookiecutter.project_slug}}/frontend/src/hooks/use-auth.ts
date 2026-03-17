@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuthStore } from "@/stores";
 import { apiClient, ApiError } from "@/lib/api-client";
 import type { User, LoginRequest, RegisterRequest } from "@/types";
@@ -65,6 +66,7 @@ export function useAuth() {
       // Ignore logout errors
     } finally {
       logout();
+      toast.success("Logged out");
       router.push(ROUTES.LOGIN);
     }
   }, [logout, router]);

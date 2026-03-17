@@ -99,6 +99,7 @@ class LLMProviderType(StrEnum):
 
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
+    GOOGLE = "google"
     OPENROUTER = "openrouter"
 
 
@@ -139,8 +140,9 @@ class LogfireFeatures(BaseModel):
 class EmbeddingProviderType(StrEnum):
     """Define the embedding provider for LLM models."""
 
-    OPENAI = "openai"  # test-embedding-3-small
+    OPENAI = "openai"  # text-embedding-3-small
     VOYAGE = "voyage"  # voyage-3 (Anthropic users)
+    GEMINI = "gemini"  # gemini-embedding-2-preview (multimodal)
     SENTENCE_TRANSFORMERS = "sentence_transformers"  # all-MiniLM-L6-v2 (local, for OpenRouter)
 
 
@@ -163,13 +165,13 @@ class DocumentParserType(StrEnum):
 
 class PdfParserType(StrEnum):
     """Define the PDF parser used to process PDF documents.
-    PDFPLUMBER: Fast, free, local PDF extraction using pdfplumber.
-               Only extracts text layer - fails on scanned images.
-    LLAMAPARSE: AI-powered cloud extraction. Handles complex layouts,
-                tables, and scanned documents. Requires API key.
+    PYMUPDF: Local PDF extraction using PyMuPDF. Supports text, tables
+             (→ markdown), images, headers/footers detection, OCR fallback.
+    LLAMAPARSE: AI-powered cloud extraction. Handles 130+ formats,
+                complex layouts, and scanned documents. Requires API key.
     """
 
-    PDFPLUMBER = "pdfplumber"  # Local PDF extraction
+    PYMUPDF = "pymupdf"  # Local PDF extraction (default)
     LLAMAPARSE = "llamaparse"  # LlamaParse cloud API
 
 
@@ -177,6 +179,9 @@ class VectorStoreType(StrEnum):
     """Define a Vector Store type."""
 
     MILVUS = "milvus"
+    QDRANT = "qdrant"
+    CHROMADB = "chromadb"
+    PGVECTOR = "pgvector"
 
 
 class RAGFeatures(BaseModel):
@@ -184,9 +189,11 @@ class RAGFeatures(BaseModel):
 
     enable_rag: bool = False
     enable_google_drive_ingestion: bool = False
+    enable_s3_ingestion: bool = False
     enable_reranker: bool = False
+    enable_image_description: bool = False
     # pdf_parser is stored here since it's only used when RAG is enabled
-    pdf_parser: PdfParserType = PdfParserType.PDFPLUMBER
+    pdf_parser: PdfParserType = PdfParserType.PYMUPDF
     vector_store: VectorStoreType = VectorStoreType.MILVUS
 
 
@@ -244,6 +251,7 @@ class ProjectConfig(BaseModel):
     enable_webhooks: bool = False
     websocket_auth: WebSocketAuthType = WebSocketAuthType.NONE
     enable_langsmith: bool = False
+    enable_web_search: bool = False
     enable_cors: bool = True
     enable_orjson: bool = True
 
@@ -351,6 +359,14 @@ class ProjectConfig(BaseModel):
         ):
             raise ValueError("Rate limiting with Redis storage requires Redis to be enabled")
 
+        # pgvector requires PostgreSQL
+        if (
+            self.rag_features.enable_rag
+            and self.rag_features.vector_store == VectorStoreType.PGVECTOR
+            and self.database != DatabaseType.POSTGRESQL
+        ):
+            raise ValueError("pgvector requires PostgreSQL database")
+
         # LangSmith requires LangChain-ecosystem framework
         if self.enable_langsmith and self.ai_framework not in (
             AIFrameworkType.LANGCHAIN,
@@ -452,16 +468,14 @@ class ProjectConfig(BaseModel):
         if self.rag_features.enable_rag and self.background_tasks == BackgroundTaskType.NONE:
             raise ValueError("RAG requires a background task system for scheduled ingestion.")
 
-        if self.rag_features.enable_rag and not self.enable_docker:
-            raise ValueError(
-                "RAG (w/ Milvus) requires Docker to be enabled for local orchestration."
-            )
-
         if (
-            self.rag_features.enable_google_drive_ingestion
-            and self.oauth_provider != OAuthProvider.GOOGLE
+            self.rag_features.enable_rag
+            and self.rag_features.vector_store in (VectorStoreType.MILVUS, VectorStoreType.QDRANT)
+            and not self.enable_docker
         ):
-            raise ValueError("Google Drive ingestion requires OAuth Provider to be set.")
+            raise ValueError(
+                f"RAG with {self.rag_features.vector_store.value} requires Docker to be enabled."
+            )
 
         return self
 
@@ -545,9 +559,11 @@ class ProjectConfig(BaseModel):
             "llm_provider": self.llm_provider.value,
             "use_openai": self.llm_provider == LLMProviderType.OPENAI,
             "use_anthropic": self.llm_provider == LLMProviderType.ANTHROPIC,
+            "use_google": self.llm_provider == LLMProviderType.GOOGLE,
             "use_openrouter": self.llm_provider == LLMProviderType.OPENROUTER,
             "enable_conversation_persistence": self.enable_conversation_persistence,
             "enable_langsmith": self.enable_langsmith,
+            "enable_web_search": self.enable_web_search and self.enable_ai_agent,
             "enable_webhooks": self.enable_webhooks,
             "websocket_auth": self.websocket_auth.value,
             "websocket_auth_jwt": self.websocket_auth == WebSocketAuthType.JWT,
@@ -592,20 +608,35 @@ class ProjectConfig(BaseModel):
             "backend_port": self.backend_port,
             # RAG
             "enable_rag": self.rag_features.enable_rag,
-            "use_milvus": self.rag_features.enable_rag,
+            "vector_store": self.rag_features.vector_store.value
+            if self.rag_features.enable_rag
+            else "milvus",
+            "use_milvus": self.rag_features.enable_rag
+            and self.rag_features.vector_store == VectorStoreType.MILVUS,
+            "use_qdrant": self.rag_features.enable_rag
+            and self.rag_features.vector_store == VectorStoreType.QDRANT,
+            "use_chromadb": self.rag_features.enable_rag
+            and self.rag_features.vector_store == VectorStoreType.CHROMADB,
+            "use_pgvector": self.rag_features.enable_rag
+            and self.rag_features.vector_store == VectorStoreType.PGVECTOR,
             # Embedding provider is auto-derived from LLM provider
             "embedding_provider": (
                 EmbeddingProviderType.VOYAGE.value
                 if self.llm_provider == LLMProviderType.ANTHROPIC
+                else EmbeddingProviderType.GEMINI.value
+                if self.llm_provider == LLMProviderType.GOOGLE
                 else EmbeddingProviderType.SENTENCE_TRANSFORMERS.value
                 if self.llm_provider == LLMProviderType.OPENROUTER
                 else EmbeddingProviderType.OPENAI.value
             ),
             "use_openai_embeddings": self.rag_features.enable_rag
-            and self.llm_provider != LLMProviderType.ANTHROPIC
-            and self.llm_provider != LLMProviderType.OPENROUTER,
+            and self.llm_provider not in (
+                LLMProviderType.ANTHROPIC, LLMProviderType.GOOGLE, LLMProviderType.OPENROUTER,
+            ),
             "use_voyage_embeddings": self.rag_features.enable_rag
             and self.llm_provider == LLMProviderType.ANTHROPIC,
+            "use_gemini_embeddings": self.rag_features.enable_rag
+            and self.llm_provider == LLMProviderType.GOOGLE,
             "use_sentence_transformers": self.rag_features.enable_rag
             and self.llm_provider == LLMProviderType.OPENROUTER,
             "enable_reranker": self.rag_features.enable_reranker
@@ -617,13 +648,17 @@ class ProjectConfig(BaseModel):
             and self.llm_provider == LLMProviderType.OPENROUTER,
             "pdf_parser": self.rag_features.pdf_parser.value
             if self.rag_features.enable_rag
-            else "pdfplumber",
+            else "pymupdf",
             "use_llamaparse": self.rag_features.enable_rag
             and self.rag_features.pdf_parser == PdfParserType.LLAMAPARSE,
-            "use_pdfplumber": self.rag_features.enable_rag
-            and self.rag_features.pdf_parser == PdfParserType.PDFPLUMBER,
             "use_python_parser": True,  # Always use Python parser for non-PDF
             "enable_google_drive_ingestion": self.rag_features.enable_google_drive_ingestion
+            if self.rag_features.enable_rag
+            else False,
+            "enable_s3_ingestion": self.rag_features.enable_s3_ingestion
+            if self.rag_features.enable_rag
+            else False,
+            "enable_rag_image_description": self.rag_features.enable_image_description
             if self.rag_features.enable_rag
             else False,
         }

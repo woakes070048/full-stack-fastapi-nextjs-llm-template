@@ -146,6 +146,57 @@ class VoyageEmbeddingProvider(BaseEmbeddingProvider):
         pass
 {%- endif %}
 
+{%- if cookiecutter.use_gemini_embeddings %}
+from google import genai
+from google.genai import types as genai_types
+{%- endif %}
+
+{%- if cookiecutter.use_gemini_embeddings %}
+class GeminiEmbeddingProvider(BaseEmbeddingProvider):
+    """Google Gemini multimodal embedding provider.
+
+    Supports text, images, and documents in a single embedding space.
+    Uses the Gemini Embedding 2 model for natively multimodal embeddings.
+    """
+
+    def __init__(self, model: str, api_key: str = "") -> None:
+        self.model = model
+        self.client = genai.Client(api_key=api_key) if api_key else genai.Client()
+
+    def embed_queries(self, texts: list[str]) -> list[list[float]]:
+        result = self.client.models.embed_content(
+            model=self.model,
+            contents=texts,
+        )
+        return [e.values for e in result.embeddings]
+
+    def embed_document(self, document: Document) -> list[list[float]]:
+        contents = []
+        for chunk in (document.chunked_pages or []):
+            contents.append(chunk.chunk_content if chunk.chunk_content else "")
+        result = self.client.models.embed_content(
+            model=self.model,
+            contents=contents,
+        )
+        return [e.values for e in result.embeddings]
+
+    def embed_image(self, image_bytes: bytes, mime_type: str = "image/png") -> list[float]:
+        """Embed an image directly (multimodal).
+
+        Returns a vector in the same space as text embeddings.
+        """
+        result = self.client.models.embed_content(
+            model=self.model,
+            contents=[
+                genai_types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            ],
+        )
+        return result.embeddings[0].values
+
+    def warmup(self) -> None:
+        pass
+{%- endif %}
+
 {%- if cookiecutter.use_sentence_transformers %}
 from app.core.config import settings as app_settings
 
@@ -201,6 +252,9 @@ class EmbeddingService:
         self.provider = OpenAIEmbeddingProvider(model=config.model)
         {%- elif cookiecutter.use_voyage_embeddings %}
         self.provider = VoyageEmbeddingProvider(model=config.model)
+        {%- elif cookiecutter.use_gemini_embeddings %}
+        from app.core.config import settings as app_settings
+        self.provider = GeminiEmbeddingProvider(model=config.model, api_key=app_settings.GOOGLE_API_KEY)
         {%- elif cookiecutter.use_sentence_transformers %}
         self.provider = SentenceTransformerEmbeddingProvider(model=config.model)
         {%- endif %}

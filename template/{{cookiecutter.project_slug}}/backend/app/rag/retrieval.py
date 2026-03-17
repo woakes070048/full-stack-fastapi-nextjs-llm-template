@@ -1,4 +1,6 @@
 {%- if cookiecutter.enable_rag %}
+from __future__ import annotations
+
 import logging
 import time
 from abc import ABC, abstractmethod
@@ -67,13 +69,11 @@ class BaseRetrievalService(ABC):
         """
         pass
 
-{%- if cookiecutter.use_milvus %}
-class MilvusRetrievalService(BaseRetrievalService):
-    """High-level service for query processing and multi-stage retrieval using Milvus.
-    
-    Handles query execution against the Milvus vector store, including
-    vector search, score filtering, and post-processing.
-    Optionally supports reranking for improved result quality.
+class RetrievalService(BaseRetrievalService):
+    """High-level retrieval service with multi-stage pipeline.
+
+    Handles query execution against any vector store backend, including
+    vector search, hybrid BM25 fusion, score filtering, and reranking.
     """
 
     def __init__(
@@ -93,6 +93,81 @@ class MilvusRetrievalService(BaseRetrievalService):
         self.settings = settings
         self.rerank_service = rerank_service
         self._reranker_enabled = rerank_service is not None and rerank_service.is_enabled
+        self._hybrid_enabled = settings.enable_hybrid_search
+        self._bm25_index: dict[str, object] = {}  # collection_name -> BM25 index
+
+    @staticmethod
+    def _rrf_fuse(
+        vector_results: list[SearchResult],
+        bm25_results: list[SearchResult],
+        k: int = 60,
+    ) -> list[SearchResult]:
+        """Reciprocal Rank Fusion of vector and BM25 results."""
+        scores: dict[str, float] = {}
+        result_map: dict[str, SearchResult] = {}
+
+        for rank, r in enumerate(vector_results):
+            key = r.content[:100]
+            scores[key] = scores.get(key, 0) + 1.0 / (k + rank + 1)
+            result_map[key] = r
+
+        for rank, r in enumerate(bm25_results):
+            key = r.content[:100]
+            scores[key] = scores.get(key, 0) + 1.0 / (k + rank + 1)
+            if key not in result_map:
+                result_map[key] = r
+
+        sorted_keys = sorted(scores, key=lambda x: scores[x], reverse=True)
+        return [
+            SearchResult(
+                content=result_map[key].content,
+                score=scores[key],
+                metadata=result_map[key].metadata,
+                parent_doc_id=result_map[key].parent_doc_id,
+            )
+            for key in sorted_keys
+        ]
+
+    async def _bm25_search(
+        self, query: str, collection_name: str, limit: int
+    ) -> list[SearchResult]:
+        """BM25 keyword search over stored documents."""
+        try:
+            from rank_bm25 import BM25Okapi
+        except ImportError:
+            logger.warning("rank-bm25 not installed, skipping BM25 search")
+            return []
+
+        # Get all documents for BM25 (cached per collection)
+        docs = await self.store.get_documents(collection_name)
+        if not docs:
+            return []
+
+        # Build corpus from stored content via vector store search with high limit
+        all_results = await self.store.search(
+            collection_name=collection_name, query=query, limit=min(limit * 10, 100)
+        )
+        if not all_results:
+            return []
+
+        corpus = [r.content.lower().split() for r in all_results]
+        bm25 = BM25Okapi(corpus)
+        query_tokens = query.lower().split()
+        bm25_scores = bm25.get_scores(query_tokens)
+
+        scored = sorted(
+            zip(all_results, bm25_scores), key=lambda x: x[1], reverse=True
+        )
+        return [
+            SearchResult(
+                content=r.content,
+                score=float(s),
+                metadata=r.metadata,
+                parent_doc_id=r.parent_doc_id,
+            )
+            for r, s in scored[:limit]
+            if s > 0
+        ]
 
     async def retrieve(
         self, 
@@ -137,20 +212,27 @@ class MilvusRetrievalService(BaseRetrievalService):
             filter=filter,
             limit=limit * fetch_multiplier
         )
-        
+
         search_time = time.time() - start_time
         logger.info(
             f"[RETRIEVAL] Vector search completed in {search_time:.3f}s, "
             f"found {len(raw_results)} results"
         )
-        
+
+        # Step 1b: Hybrid search (BM25 + vector fusion) if enabled
+        if self._hybrid_enabled:
+            bm25_results = await self._bm25_search(query, collection_name, limit * fetch_multiplier)
+            if bm25_results:
+                raw_results = self._rrf_fuse(raw_results, bm25_results)
+                logger.info(f"[RETRIEVAL] Hybrid search: fused {len(raw_results)} results")
+
         # Log initial results
         for i, r in enumerate(raw_results[:3]):
             logger.debug(
                 f"[RETRIEVAL] Initial result #{i+1}: score={r.score:.4f}, "
                 f"content='{r.content[:50]}...'"
             )
-        
+
         results = raw_results
         
         # Step 2: Apply reranking if enabled and requested
@@ -200,6 +282,38 @@ class MilvusRetrievalService(BaseRetrievalService):
         
         return final_results
 
+    async def retrieve_multi(
+        self,
+        query: str,
+        collection_names: list[str],
+        limit: int = 5,
+        min_score: float = 0.0,
+        use_reranker: bool = False,
+    ) -> list[SearchResult]:
+        """Search across multiple collections and merge results.
+
+        Searches each collection, merges results, sorts by score.
+        """
+        all_results: list[SearchResult] = []
+        for name in collection_names:
+            try:
+                results = await self.retrieve(
+                    query=query,
+                    collection_name=name,
+                    limit=limit,
+                    min_score=min_score,
+                    use_reranker=use_reranker,
+                )
+                # Tag results with collection name in metadata
+                for r in results:
+                    r.metadata["collection"] = name
+                all_results.extend(results)
+            except Exception as e:
+                logger.warning(f"[RETRIEVAL] Failed to search collection '{name}': {e}")
+
+        all_results.sort(key=lambda r: r.score, reverse=True)
+        return all_results[:limit]
+
     async def retrieve_by_document(
         self, 
         query: str, 
@@ -223,7 +337,9 @@ class MilvusRetrievalService(BaseRetrievalService):
         Returns:
             List of SearchResult objects from the specified document.
         """
-        filter_expr = f'parent_doc_id == "{document_id}"'
+        # Sanitize document_id to prevent filter injection
+        sanitized_id = document_id.replace('"', "").replace("\\", "")
+        filter_expr = f'parent_doc_id == "{sanitized_id}"'
         logger.info(
             f"[RETRIEVAL] Retrieve by document: doc_id={document_id}, "
             f"query='{query[:30]}...', limit={limit}, rerank={use_reranker}"
@@ -236,5 +352,4 @@ class MilvusRetrievalService(BaseRetrievalService):
             use_reranker=use_reranker,
         )
 
-{%- endif %}
 {%- endif %}

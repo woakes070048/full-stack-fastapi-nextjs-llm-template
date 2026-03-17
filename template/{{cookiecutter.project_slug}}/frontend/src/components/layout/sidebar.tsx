@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/constants";
-import { LayoutDashboard{%- if cookiecutter.enable_ai_agent %}, MessageSquare{%- endif %} } from "lucide-react";
+import { LayoutDashboard{%- if cookiecutter.enable_ai_agent %}, MessageSquare{%- endif %}{%- if cookiecutter.enable_rag %}, Database{%- endif %} } from "lucide-react";
 import { useSidebarStore } from "@/stores";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui";
 
@@ -12,6 +12,9 @@ const navigation = [
   { name: "Dashboard", href: ROUTES.DASHBOARD, icon: LayoutDashboard },
 {%- if cookiecutter.enable_ai_agent %}
   { name: "Chat", href: ROUTES.CHAT, icon: MessageSquare },
+{%- endif %}
+{%- if cookiecutter.enable_rag %}
+  { name: "Knowledge Base", href: ROUTES.RAG, icon: Database },
 {%- endif %}
 ];
 

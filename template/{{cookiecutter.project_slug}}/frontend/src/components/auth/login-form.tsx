@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useAuth } from "@/hooks";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui";
 import { ApiError } from "@/lib/api-client";
@@ -27,12 +28,11 @@ export function LoginForm() {
 
     try {
       await login({ email, password });
+      toast.success("Logged in successfully");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Login failed. Please try again.");
-      }
+      const message = err instanceof ApiError ? err.message : "Login failed. Please try again.";
+      setError(message);
+      toast.error(message);
       setIsLoading(false);
     }
   };

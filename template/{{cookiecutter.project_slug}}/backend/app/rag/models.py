@@ -10,27 +10,45 @@ from typing import Optional, Any
 from enum import StrEnum
 
 
+{%- if cookiecutter.enable_rag_image_description %}
+class DocumentImage(BaseModel):
+    """An image extracted from a document page."""
+
+    image_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    page_num: int = 0
+    image_bytes: bytes = b""
+    description: str = ""
+    mime_type: str = "image/png"
+{%- endif %}
+
+
 class DocumentPage(BaseModel):
     """Content of document's page."""
-    
+
     page_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     page_num: int
     content: str
     parent_doc_id: Optional[str] = None
+{%- if cookiecutter.enable_rag_image_description %}
+    images: list[DocumentImage] = Field(default_factory=list)
+{%- endif %}
     
     
 class DocumentPageChunk(DocumentPage):
     """Content of chunked document's page."""
     chunk_content: str
     chunk_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    chunk_num: int = 0
 
 
 class DocumentMetadata(BaseModel):
     """Metadata of a document."""
-    
+
     filename: str
     filesize: int
     filetype: str
+    source_path: str = ""  # original path: local path, s3://bucket/key, gdrive://file_id
+    content_hash: str = ""  # SHA256 hash for deduplication
     additional_info: Optional[dict[str, Any]] = None
 
 

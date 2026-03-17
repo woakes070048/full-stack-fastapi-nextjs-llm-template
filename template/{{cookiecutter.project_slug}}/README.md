@@ -1,1102 +1,282 @@
-# Full-Stack FastAPI + Next.js Template for AI/LLM Applications
+# {{ cookiecutter.project_name }}
 
-<p align="center">
-  <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/stargazers"><img src="https://img.shields.io/github/stars/vstorm-co/full-stack-ai-agent-template?style=flat&logo=github&color=yellow" alt="GitHub Stars"></a>
-  <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vstorm-co/full-stack-ai-agent-template?color=blue" alt="License"></a>
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue?logo=python&logoColor=white" alt="Python"></a>
-  <a href="https://pypi.org/project/fastapi-fullstack/"><img src="https://img.shields.io/pypi/v/fastapi-fullstack?color=green&logo=pypi&logoColor=white" alt="PyPI"></a>
-  <img src="https://img.shields.io/badge/coverage-100%25-brightgreen" alt="Coverage">
-  <img src="https://img.shields.io/badge/integrations-20%2B-brightgreen" alt="20+ Integrations">
-</p>
+{{ cookiecutter.project_description }}
 
-<p align="center">
-  <b>Production-ready project generator for AI/LLM applications with 20+ enterprise integrations.</b><br>
-  <sub>Built with FastAPI, Next.js 15, PydanticAI/LangChain, and everything you need for professional business applications.</sub>
-</p>
+Generated with [Full-Stack AI Agent Template](https://github.com/vstorm-co/full-stack-ai-agent-template).
 
-<p align="center">
-  <a href="#-why-this-template">Why This Template</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-demo">Demo</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-ai-agent">AI Agent</a> •
-  <a href="#-observability-with-logfire">Logfire</a> •
-  <a href="#-documentation">Documentation</a>
-</p>
+## Stack
 
-## Related Projects
-
-> **Building advanced AI agents?** Check out [pydantic-deep](https://github.com/vstorm-co/pydantic-deepagents) - a deep agent framework built on pydantic-ai with planning, filesystem, and subagent capabilities.
-
----
-
-## 🎯 Why This Template
-
-Building AI/LLM applications requires more than just an API wrapper. You need:
-
-- **Type-safe AI agents** with tool/function calling
-- **Real-time streaming** responses via WebSocket
-- **Conversation persistence** and history management
-- **Production infrastructure** - auth, rate limiting, observability
-- **Enterprise integrations** - background tasks, webhooks, admin panels
-
-This template gives you all of that out of the box, with **20+ configurable integrations** so you can focus on building your AI product, not boilerplate.
-
-### Perfect For
-
-- 🤖 **AI Chatbots & Assistants** - PydanticAI or LangChain agents with streaming responses
-- 📊 **ML Applications** - Background task processing with Celery/Taskiq
-- 🏢 **Enterprise SaaS** - Full auth, admin panel, webhooks, and more
-- 🚀 **Startups** - Ship fast with production-ready infrastructure
-
----
-
-## ✨ Features
-
-### 🤖 AI/LLM First
-
-- **[PydanticAI](https://ai.pydantic.dev)** or **[LangChain](https://python.langchain.com)** - Choose your preferred AI framework
-- **WebSocket Streaming** - Real-time responses with full event access
-- **Conversation Persistence** - Save chat history to database
-- **Custom Tools** - Easily extend agent capabilities
-- **Multi-model Support** - OpenAI, Anthropic, and more
-- **Observability** - Logfire for PydanticAI, LangSmith for LangChain
-
-### ⚡ Backend (FastAPI)
-
-- **[FastAPI](https://fastapi.tiangolo.com)** + **[Pydantic v2](https://docs.pydantic.dev)** - High-performance async API
-- **Multiple Databases** - PostgreSQL (async), MongoDB (async), SQLite
-- **Authentication** - JWT + Refresh tokens, API Keys, OAuth2 (Google)
-- **Background Tasks** - Celery, Taskiq, or ARQ
-- **Django-style CLI** - Custom management commands with auto-discovery
-
-### 🎨 Frontend (Next.js 15)
-
-- **React 19** + **TypeScript** + **Tailwind CSS v4**
-- **AI Chat Interface** - WebSocket streaming, tool call visualization
-- **Authentication** - HTTP-only cookies, auto-refresh
-- **Dark Mode** + **i18n** (optional)
-
-### 🔌 20+ Enterprise Integrations
-
-| Category | Integrations |
-|----------|-------------|
-| **AI Frameworks** | PydanticAI, LangChain |
-| **Caching & State** | Redis, fastapi-cache2 |
-| **Security** | Rate limiting, CORS, CSRF protection |
-| **Observability** | Logfire, LangSmith, Sentry, Prometheus |
-| **Admin** | SQLAdmin panel with auth |
-| **Events** | Webhooks, WebSockets |
-| **DevOps** | Docker, GitHub Actions, GitLab CI, Kubernetes |
-
----
-
-## 🎬 Demo
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/app_start.gif" alt="FastAPI Fullstack Generator Demo">
-</p>
-
----
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# pip
-pip install fastapi-fullstack
-
-# uv (recommended)
-uv tool install fastapi-fullstack
-
-# pipx
-pipx install fastapi-fullstack
-```
-
-### Create Your Project
-
-```bash
-# Interactive wizard (recommended)
-fastapi-fullstack new
-
-# Quick mode with options
-fastapi-fullstack create my_ai_app \
-  --database postgresql \
-  --auth jwt \
-  --frontend nextjs
-
-# Use presets for common setups
-fastapi-fullstack create my_ai_app --preset production   # Full production setup
-fastapi-fullstack create my_ai_app --preset ai-agent     # AI agent with streaming
-
-# Minimal project (no extras)
-fastapi-fullstack create my_ai_app --minimal
-```
-
-### Start Development
-
-#### Step 1: Install Dependencies
-
-```bash
-cd my_ai_app
-make install
-```
-
-> **Windows Users:** The `make` command requires GNU Make which is not available by default on Windows.
-> You can either install Make via [Chocolatey](https://chocolatey.org/) (`choco install make`),
-> use WSL (Windows Subsystem for Linux), or use the raw commands from the
-> [Manual Commands Reference](#-manual-commands-reference-windows--no-make) section below.
-
-#### Step 2: Start the Database
+| Component | Technology |
+|-----------|-----------|
+| **Backend** | FastAPI + Pydantic v2 |
 {%- if cookiecutter.use_postgresql %}
-
-```bash
-# Start PostgreSQL with Docker
-make docker-db
-
-# Wait a few seconds for the database to be ready
-```
+| **Database** | PostgreSQL (async) |
 {%- elif cookiecutter.use_mongodb %}
+| **Database** | MongoDB (async) |
+{%- elif cookiecutter.use_sqlite %}
+| **Database** | SQLite |
+{%- endif %}
+{%- if cookiecutter.use_jwt %}
+| **Auth** | JWT + refresh tokens |
+{%- endif %}
+{%- if cookiecutter.enable_redis %}
+| **Cache** | Redis |
+{%- endif %}
+{%- if cookiecutter.enable_ai_agent %}
+| **AI Framework** | {{ cookiecutter.ai_framework }} ({{ cookiecutter.llm_provider }}) |
+{%- endif %}
+{%- if cookiecutter.enable_rag %}
+| **RAG** | {{ cookiecutter.vector_store }} vector store |
+{%- endif %}
+{%- if cookiecutter.background_tasks != "none" %}
+| **Tasks** | {{ cookiecutter.background_tasks }} |
+{%- endif %}
+{%- if cookiecutter.use_frontend %}
+| **Frontend** | Next.js 15 + React 19 + Tailwind v4 |
+{%- endif %}
+
+## Quick Start
 
 ```bash
-# Start MongoDB with Docker
-docker-compose up -d mongo
+# Install dependencies
+make install
+
+{%- if cookiecutter.enable_docker %}
+# One-command setup (Docker required)
+make quickstart
+{%- else %}
+# Start the server
+make run
+{%- endif %}
 ```
+
+{%- if cookiecutter.enable_docker %}
+This will:
+1. Install Python dependencies
+2. Start all Docker services (database, Redis, vector store, etc.)
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
+3. Run database migrations
+{%- endif %}
+{%- if cookiecutter.use_jwt %}
+4. Create an admin user (`admin@example.com` / `admin123`)
+{%- endif %}
+{%- endif %}
+
+**Access:**
+- API: http://localhost:{{ cookiecutter.backend_port }}
+- Docs: http://localhost:{{ cookiecutter.backend_port }}/docs
+{%- if cookiecutter.use_jwt %}
+- Admin: http://localhost:{{ cookiecutter.backend_port }}/admin
+{%- endif %}
+{%- if cookiecutter.use_frontend %}
+- Frontend: http://localhost:{{ cookiecutter.frontend_port }} (run `cd frontend && bun dev`)
+{%- endif %}
+
+## Manual Setup
+
+If you prefer to set up step by step:
+
+```bash
+# 1. Install dependencies
+make install
+
+{%- if cookiecutter.use_postgresql and cookiecutter.enable_docker %}
+# 2. Start database
+make docker-db
 {%- endif %}
 
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
-
-#### Step 3: Create and Apply Database Migrations
-
-The project uses Alembic for database migrations. After generating a new project, you need to create the initial migration:
-
-```bash
-# Create the initial migration (generates migration file based on your models)
-make db-migrate
-# When prompted, enter a message like: "Initial migration"
-
-# Apply the migration to create tables
+# 3. Create and apply migrations
+make db-migrate    # Enter: "Initial migration"
 make db-upgrade
-```
-
-> **Note:** Run `make db-migrate` whenever you modify database models to generate new migrations.
 {%- endif %}
 
 {%- if cookiecutter.use_jwt %}
-
-#### Step 4: Create Admin User
-
-```bash
-# Create an admin user (required for SQLAdmin panel access)
+# 4. Create admin user
 make create-admin
-# Enter email and password when prompted
-```
 {%- endif %}
 
-#### Step 5: Start the Backend
+# 5. Start backend
+make run
+
+{%- if cookiecutter.use_frontend %}
+# 6. Start frontend (new terminal)
+cd frontend && bun install && bun dev
+{%- endif %}
+```
+
+## Commands
+
+Run `make help` for all available commands. Key ones:
+
+| Command | Description |
+|---------|-------------|
+| `make run` | Start dev server with hot reload |
+| `make test` | Run tests |
+| `make lint` | Check code quality |
+| `make format` | Auto-format code |
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
+| `make db-migrate` | Create new migration |
+| `make db-upgrade` | Apply migrations |
+{%- endif %}
+{%- if cookiecutter.use_jwt %}
+| `make create-admin` | Create admin user |
+{%- endif %}
+{%- if cookiecutter.enable_docker %}
+| `make quickstart` | Full setup (install + docker + db + admin) |
+| `make docker-up` | Start all Docker services |
+| `make docker-down` | Stop all services |
+{%- endif %}
+
+{%- if cookiecutter.enable_ai_agent %}
+
+## AI Agent
+
+Using **{{ cookiecutter.ai_framework }}** with **{{ cookiecutter.llm_provider }}** provider.
+
+{%- if cookiecutter.use_frontend %}
+Chat with the agent at http://localhost:{{ cookiecutter.frontend_port }}/chat
+{%- endif %}
+
+### Customize
+
+- **System prompt:** `app/agents/prompts.py`
+- **Add tools:** See `docs/howto/add-agent-tool.md`
+- **Agent config:** `.env` → `AI_MODEL`, `AI_TEMPERATURE`
+{%- endif %}
+
+{%- if cookiecutter.enable_rag %}
+
+## RAG (Knowledge Base)
+
+Using **{{ cookiecutter.vector_store }}** as vector store.
+
+### Ingest documents
 
 ```bash
-make run
+# Local files
+uv run {{ cookiecutter.project_slug }} rag-ingest /path/to/docs/ --collection documents --recursive
+
+{%- if cookiecutter.enable_google_drive_ingestion %}
+# Google Drive
+uv run {{ cookiecutter.project_slug }} rag-sync-gdrive --collection documents --folder-id <id>
+{%- endif %}
+{%- if cookiecutter.enable_s3_ingestion %}
+# S3/MinIO
+uv run {{ cookiecutter.project_slug }} rag-sync-s3 --collection documents --prefix docs/
+{%- endif %}
 ```
 
-The API will be available at:
-- API: http://localhost:{{ cookiecutter.backend_port }}
-- Docs: http://localhost:{{ cookiecutter.backend_port }}/docs
-{%- if cookiecutter.enable_admin_panel %}
-- Admin Panel: http://localhost:{{ cookiecutter.backend_port }}/admin
+### Search
+
+```bash
+uv run {{ cookiecutter.project_slug }} rag-search "your query" --collection documents
+```
+
+### Manage collections
+
+```bash
+uv run {{ cookiecutter.project_slug }} rag-collections   # List all
+uv run {{ cookiecutter.project_slug }} rag-stats          # Show stats
+uv run {{ cookiecutter.project_slug }} rag-drop <name>    # Delete collection
+```
 {%- endif %}
+
+## Project Structure
+
+```
+backend/app/
+├── api/routes/v1/        # API endpoints
+├── core/config.py        # Settings (from .env)
+├── services/             # Business logic
+├── repositories/         # Data access
+├── schemas/              # Pydantic models
+{%- if cookiecutter.use_database %}
+├── db/models/            # Database models
+{%- endif %}
+{%- if cookiecutter.enable_ai_agent %}
+├── agents/               # AI agents & tools
+{%- endif %}
+{%- if cookiecutter.enable_rag %}
+├── rag/                  # RAG pipeline (embeddings, vector store, ingestion)
+{%- endif %}
+├── commands/             # CLI commands (auto-discovered)
+{%- if cookiecutter.background_tasks != "none" %}
+└── worker/               # Background tasks
+{%- else %}
+└── ...
+{%- endif %}
+```
+
+## Guides
+
+| Guide | Description |
+|-------|-------------|
+| `docs/howto/add-api-endpoint.md` | Add a new API endpoint |
+{%- if cookiecutter.enable_ai_agent %}
+| `docs/howto/add-agent-tool.md` | Create a new agent tool |
+| `docs/howto/customize-agent-prompt.md` | Customize agent behavior |
+{%- endif %}
+| `docs/howto/add-data-pipeline.md` | Build a data pipeline |
+| `docs/howto/add-background-task.md` | Add background tasks |
+{%- if cookiecutter.enable_rag %}
+| `docs/howto/add-rag-source.md` | Add a new document source |
+{%- endif %}
+
+## Environment Variables
+
+All config is in `backend/.env`. Key variables:
+
+```bash
+{%- if cookiecutter.use_postgresql %}
+POSTGRES_HOST=localhost
+POSTGRES_PASSWORD=postgres
+{%- endif %}
+{%- if cookiecutter.enable_ai_agent and cookiecutter.use_openai %}
+OPENAI_API_KEY=sk-...
+{%- endif %}
+{%- if cookiecutter.enable_ai_agent and cookiecutter.use_anthropic %}
+ANTHROPIC_API_KEY=sk-ant-...
+{%- endif %}
+{%- if cookiecutter.enable_ai_agent and cookiecutter.use_google %}
+GOOGLE_API_KEY=...
+{%- endif %}
+{%- if cookiecutter.enable_rag %}
+RAG_CHUNKING_STRATEGY=recursive  # recursive, markdown, fixed
+RAG_HYBRID_SEARCH=false
+{%- endif %}
+```
+
+See `backend/.env.example` for all available variables.
 
 {%- if cookiecutter.use_frontend %}
 
-#### Step 6: Start the Frontend (separate terminal)
+## Deployment
+
+### Frontend (Vercel)
 
 ```bash
 cd frontend
-bun install
-bun dev
+npx vercel --prod
 ```
 
-Frontend: http://localhost:{{ cookiecutter.frontend_port }}
-{%- endif %}
-
----
-
-### Quick Start with Docker
-
-Alternatively, run everything with Docker:
-
-```bash
-# Start all backend services (API, database, Redis, etc.)
-make docker-up
-
-{%- if cookiecutter.use_frontend %}
-# Start frontend (separate command)
-make docker-frontend
-{%- endif %}
-```
-
----
-
-### Using the Project CLI
-
-Each generated project includes a CLI tool named `{{ cookiecutter.project_slug }}`. Run commands from the `backend/` directory:
-
-```bash
-cd backend
-
-# Server commands
-uv run {{ cookiecutter.project_slug }} server run --reload     # Start dev server
-uv run {{ cookiecutter.project_slug }} server routes           # Show all routes
-
-{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
-# Database commands
-uv run {{ cookiecutter.project_slug }} db migrate -m "message" # Create migration
-uv run {{ cookiecutter.project_slug }} db upgrade              # Apply migrations
-uv run {{ cookiecutter.project_slug }} db downgrade            # Rollback migration
-{%- endif %}
-
+Set environment variables in Vercel dashboard:
+- `BACKEND_URL` = your backend URL
+- `BACKEND_WS_URL` = your backend WebSocket URL
 {%- if cookiecutter.use_jwt %}
-# User commands
-uv run {{ cookiecutter.project_slug }} user create-admin       # Create admin user
-uv run {{ cookiecutter.project_slug }} user create             # Create regular user
-uv run {{ cookiecutter.project_slug }} user list               # List all users
+- `NEXT_PUBLIC_AUTH_ENABLED` = `true`
 {%- endif %}
-```
+{%- if cookiecutter.enable_rag %}
+- `NEXT_PUBLIC_RAG_ENABLED` = `true`
+{%- endif %}
 
-Or use Makefile shortcuts from the project root:
+### Backend (Docker)
 
 ```bash
-make help          # Show all available commands
-make run           # Start dev server
-{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
-make db-migrate    # Create new migration
-make db-upgrade    # Apply migrations
-{%- endif %}
-{%- if cookiecutter.use_jwt %}
-make create-admin  # Create admin user
-{%- endif %}
+make docker-prod
 ```
-
-**Access:**
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- Admin Panel: http://localhost:8000/admin
-- Frontend: http://localhost:3000
-
----
-
-## 📸 Screenshots
-
-### Chat Interface
-| Light Mode | Dark Mode |
-|:---:|:---:|
-| ![Chat Light](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/new_chat_light.png) | ![Chat Dark](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/new_chat_dark.png) |
-
-### Authentication
-| Register | Login |
-|:---:|:---:|
-| ![Register](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/new_register.png) | ![Login](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/new_login.png) |
-
-### Observability
-| Logfire (PydanticAI) | LangSmith (LangChain) |
-|:---:|:---:|
-| ![Logfire](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/logfire.png) | ![LangSmith](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/langsmith.png) |
-
-### Admin, Monitoring & API
-| Celery Flower | SQLAdmin Panel |
-|:---:|:---:|
-| ![Flower](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/flower.png) | ![Admin](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/admin.png) |
-
-| API Documentation |
-|:---:|
-| ![API Docs](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/docs_2.png) |
-
----
-
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    subgraph Frontend["Frontend (Next.js 15)"]
-        UI[React Components]
-        WS[WebSocket Client]
-        Store[Zustand Stores]
-    end
-
-    subgraph Backend["Backend (FastAPI)"]
-        API[API Routes]
-        Services[Services Layer]
-        Repos[Repositories]
-        Agent[AI Agent]
-    end
-
-    subgraph Infrastructure
-        DB[(PostgreSQL/MongoDB)]
-        Redis[(Redis)]
-        Queue[Celery/Taskiq]
-    end
-
-    subgraph External
-        LLM[OpenAI/Anthropic]
-        Webhook[Webhook Endpoints]
-    end
-
-    UI --> API
-    WS <--> Agent
-    API --> Services
-    Services --> Repos
-    Services --> Agent
-    Repos --> DB
-    Agent --> LLM
-    Services --> Redis
-    Services --> Queue
-    Services --> Webhook
-```
-
-### Layered Architecture
-
-The backend follows a clean **Repository + Service** pattern:
-
-```mermaid
-graph LR
-    A[API Routes] --> B[Services]
-    B --> C[Repositories]
-    C --> D[(Database)]
-
-    B --> E[External APIs]
-    B --> F[AI Agents]
-```
-
-| Layer | Responsibility |
-|-------|---------------|
-| **Routes** | HTTP handling, validation, auth |
-| **Services** | Business logic, orchestration |
-| **Repositories** | Data access, queries |
-
-See [Architecture Documentation](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/architecture.md) for details.
-
----
-
-## 🤖 AI Agent
-
-Choose between **PydanticAI** or **LangChain** when generating your project, with support for multiple LLM providers:
-
-```bash
-# PydanticAI with OpenAI (default)
-fastapi-fullstack create my_app --ai-agent --ai-framework pydantic_ai
-
-# PydanticAI with Anthropic
-fastapi-fullstack create my_app --ai-agent --ai-framework pydantic_ai --llm-provider anthropic
-
-# PydanticAI with OpenRouter
-fastapi-fullstack create my_app --ai-agent --ai-framework pydantic_ai --llm-provider openrouter
-
-# LangChain with OpenAI
-fastapi-fullstack create my_app --ai-agent --ai-framework langchain
-
-# LangChain with Anthropic
-fastapi-fullstack create my_app --ai-agent --ai-framework langchain --llm-provider anthropic
-```
-
-### Supported LLM Providers
-
-| Framework | OpenAI | Anthropic | OpenRouter |
-|-----------|:------:|:---------:|:----------:|
-| **PydanticAI** | ✓ | ✓ | ✓ |
-| **LangChain** | ✓ | ✓ | - |
-
-### PydanticAI Integration
-
-Type-safe agents with full dependency injection:
-
-```python
-# app/agents/assistant.py
-from pydantic_ai import Agent, RunContext
-
-@dataclass
-class Deps:
-    user_id: str | None = None
-    db: AsyncSession | None = None
-
-agent = Agent[Deps, str](
-    model="openai:gpt-4o-mini",
-    system_prompt="You are a helpful assistant.",
-)
-
-@agent.tool
-async def search_database(ctx: RunContext[Deps], query: str) -> list[dict]:
-    """Search the database for relevant information."""
-    # Access user context and database via ctx.deps
-    ...
-```
-
-### LangChain Integration
-
-Flexible agents with LangGraph:
-
-```python
-# app/agents/langchain_assistant.py
-from langchain.tools import tool
-from langgraph.prebuilt import create_react_agent
-
-@tool
-def search_database(query: str) -> list[dict]:
-    """Search the database for relevant information."""
-    ...
-
-agent = create_react_agent(
-    model=ChatOpenAI(model="gpt-4o-mini"),
-    tools=[search_database],
-    prompt="You are a helpful assistant.",
-)
-```
-
-### WebSocket Streaming
-
-Both frameworks use the same WebSocket endpoint with real-time streaming:
-
-```python
-@router.websocket("/ws")
-async def agent_ws(websocket: WebSocket):
-    await websocket.accept()
-
-    # Works with both PydanticAI and LangChain
-    async for event in agent.stream(user_input):
-        await websocket.send_json({
-            "type": "text_delta",
-            "content": event.content
-        })
-```
-
-### Observability
-
-Each framework has its own observability solution:
-
-| Framework | Observability | Dashboard |
-|-----------|--------------|-----------|
-| **PydanticAI** | [Logfire](https://logfire.pydantic.dev) | Agent runs, tool calls, token usage |
-| **LangChain** | [LangSmith](https://smith.langchain.com) | Traces, feedback, datasets |
-
-See [AI Agent Documentation](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/ai-agent.md) for more.
-
----
-
-## 📊 Observability
-
-### Logfire (for PydanticAI)
-
-[Logfire](https://logfire.pydantic.dev) provides complete observability for your application - from AI agents to database queries. Built by the Pydantic team, it offers first-class support for the entire Python ecosystem.
-
-```mermaid
-graph LR
-    subgraph Your App
-        API[FastAPI]
-        Agent[PydanticAI]
-        DB[(Database)]
-        Cache[(Redis)]
-        Queue[Celery/Taskiq]
-        HTTP[HTTPX]
-    end
-
-    subgraph Logfire
-        Traces[Traces]
-        Metrics[Metrics]
-        Logs[Logs]
-    end
-
-    API --> Traces
-    Agent --> Traces
-    DB --> Traces
-    Cache --> Traces
-    Queue --> Traces
-    HTTP --> Traces
-```
-
-| Component | What You See |
-|-----------|-------------|
-| **PydanticAI** | Agent runs, tool calls, LLM requests, token usage, streaming events |
-| **FastAPI** | Request/response traces, latency, status codes, route performance |
-| **PostgreSQL/MongoDB** | Query execution time, slow queries, connection pool stats |
-| **Redis** | Cache hits/misses, command latency, key patterns |
-| **Celery/Taskiq** | Task execution, queue depth, worker performance |
-| **HTTPX** | External API calls, response times, error rates |
-
-### LangSmith (for LangChain)
-
-[LangSmith](https://smith.langchain.com) provides observability specifically designed for LangChain applications:
-
-| Feature | Description |
-|---------|-------------|
-| **Traces** | Full execution traces for agent runs and chains |
-| **Feedback** | Collect user feedback on agent responses |
-| **Datasets** | Build evaluation datasets from production data |
-| **Monitoring** | Track latency, errors, and token usage |
-
-LangSmith is automatically configured when you choose LangChain:
-
-```bash
-# .env
-LANGCHAIN_TRACING_V2=true
-LANGCHAIN_API_KEY=your-api-key
-LANGCHAIN_PROJECT=my_project
-```
-
-### Configuration
-
-Enable Logfire and select which components to instrument:
-
-```bash
-fastapi-fullstack new
-# ✓ Enable Logfire observability
-#   ✓ Instrument FastAPI
-#   ✓ Instrument Database
-#   ✓ Instrument Redis
-#   ✓ Instrument Celery
-#   ✓ Instrument HTTPX
-```
-
-### Usage
-
-```python
-# Automatic instrumentation in app/main.py
-import logfire
-
-logfire.configure()
-logfire.instrument_fastapi(app)
-logfire.instrument_asyncpg()
-logfire.instrument_redis()
-logfire.instrument_httpx()
-```
-
-```python
-# Manual spans for custom logic
-with logfire.span("process_order", order_id=order.id):
-    await validate_order(order)
-    await charge_payment(order)
-    await send_confirmation(order)
-```
-
-For more details, see [Logfire Documentation](https://logfire.pydantic.dev/docs/integrations/).
-
-{%- if cookiecutter.enable_prometheus %}
-
----
-
-## 📈 Prometheus Metrics
-
-This project includes Prometheus metrics for monitoring and alerting.
-
-### Accessing Metrics
-
-Metrics are exposed at the `/metrics` endpoint:
-
-```bash
-curl http://localhost:{{ cookiecutter.backend_port }}/metrics
-```
-
-### Available Metrics
-
-| Metric | Type | Description |
-|--------|------|-------------|
-| `http_requests_total` | Counter | Total HTTP requests by method, path, status |
-| `http_request_duration_seconds` | Histogram | Request latency distribution |
-| `http_requests_inprogress` | Gauge | Currently in-flight requests |
-| `http_request_size_bytes` | Histogram | Request body size |
-| `http_response_size_bytes` | Histogram | Response body size |
-
-### Prometheus Configuration
-
-Add to your `prometheus.yml`:
-
-```yaml
-scrape_configs:
-  - job_name: '{{ cookiecutter.project_slug }}'
-    static_configs:
-      - targets: ['localhost:{{ cookiecutter.backend_port }}']
-    metrics_path: /metrics
-    scrape_interval: 15s
-```
-
-### Docker Labels
-
-When running with Docker, the service includes labels for Prometheus service discovery:
-
-```yaml
-labels:
-  - "prometheus.scrape=true"
-  - "prometheus.port={{ cookiecutter.backend_port }}"
-  - "prometheus.path=/metrics"
-```
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PROMETHEUS_METRICS_PATH` | `/metrics` | Endpoint path for metrics |
-| `PROMETHEUS_INCLUDE_IN_SCHEMA` | `false` | Include in OpenAPI schema |
-{%- endif %}
-
-{%- if cookiecutter.use_arq %}
-
----
-
-## ⚡ Background Tasks (ARQ)
-
-This project uses [ARQ](https://arq-docs.helpmanual.io/) (Async Redis Queue) for background task processing.
-
-### Starting the Worker
-
-```bash
-# Using the CLI
-cd backend
-arq app.worker.arq_app.WorkerSettings
-
-# Using Docker
-docker-compose up -d arq_worker
-```
-
-### Enqueueing Tasks
-
-```python
-from arq.connections import ArqRedis, create_pool
-from app.core.config import settings
-
-# Create a connection pool
-redis = await create_pool(RedisSettings(
-    host=settings.ARQ_REDIS_HOST,
-    port=settings.ARQ_REDIS_PORT,
-    database=settings.ARQ_REDIS_DB,
-))
-
-# Enqueue a task
-await redis.enqueue_job('example_task', 'Hello, World!')
-
-# Enqueue with delay
-from datetime import timedelta
-await redis.enqueue_job('example_task', 'Delayed message', _defer_by=timedelta(minutes=5))
-```
-
-### Creating New Tasks
-
-Add tasks to `app/worker/arq_app.py`:
-
-```python
-async def my_task(ctx: dict, arg1: str, arg2: int) -> dict:
-    """My custom background task."""
-    # ctx contains: redis connection, job_id, job_try, etc.
-    result = await do_something(arg1, arg2)
-    return {"status": "completed", "result": result}
-
-# Register in WorkerSettings.functions list
-class WorkerSettings:
-    functions = [
-        example_task,
-        my_task,  # Add your task here
-    ]
-```
-
-### Scheduled Tasks (Cron)
-
-```python
-from arq import cron
-
-class WorkerSettings:
-    cron_jobs = [
-        cron(my_scheduled_task, minute=0, hour=0),  # Daily at midnight
-        cron(my_scheduled_task, minute={0, 30}),     # Every 30 minutes
-    ]
-```
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ARQ_REDIS_HOST` | `localhost` | Redis host |
-| `ARQ_REDIS_PORT` | `6379` | Redis port |
-| `ARQ_REDIS_PASSWORD` | `None` | Redis password |
-| `ARQ_REDIS_DB` | `2` | Redis database number |
-{%- endif %}
-
-{%- if cookiecutter.enable_kubernetes %}
-
----
-
-## ☸️ Kubernetes Deployment
-
-This project includes Kubernetes manifests for production deployment.
-
-### Quick Deploy
-
-```bash
-# Using kustomize (recommended)
-kubectl apply -k kubernetes/
-
-# Or apply individually
-kubectl apply -f kubernetes/namespace.yaml
-kubectl apply -f kubernetes/configmap.yaml
-kubectl apply -f kubernetes/secret.yaml
-kubectl apply -f kubernetes/deployment.yaml
-kubectl apply -f kubernetes/service.yaml
-kubectl apply -f kubernetes/ingress.yaml
-```
-
-### Manifest Files
-
-| File | Description |
-|------|-------------|
-| `namespace.yaml` | Creates dedicated namespace |
-| `configmap.yaml` | Non-sensitive configuration |
-| `secret.yaml` | Sensitive data (passwords, API keys) |
-| `deployment.yaml` | Backend + worker deployments |
-| `service.yaml` | ClusterIP service for backend |
-| `ingress.yaml` | External access with nginx ingress |
-| `kustomization.yaml` | Kustomize configuration |
-
-### Before Deploying
-
-1. **Update secrets** in `kubernetes/secret.yaml`:
-   ```bash
-   # Generate a secure SECRET_KEY
-   openssl rand -hex 32
-   ```
-
-2. **Configure ingress** in `kubernetes/ingress.yaml`:
-   - Replace `api.example.com` with your domain
-   - Uncomment TLS section for HTTPS
-
-3. **Build and push Docker image**:
-   ```bash
-   docker build -t your-registry/{{ cookiecutter.project_slug }}:latest ./backend
-   docker push your-registry/{{ cookiecutter.project_slug }}:latest
-   ```
-
-4. **Update image** in `kubernetes/kustomization.yaml`:
-   ```yaml
-   images:
-     - name: {{ cookiecutter.project_slug }}
-       newName: your-registry/{{ cookiecutter.project_slug }}
-       newTag: latest
-   ```
-
-### Scaling
-
-```bash
-# Scale backend replicas
-kubectl scale deployment {{ cookiecutter.project_slug }}-backend -n {{ cookiecutter.project_slug }} --replicas=3
-
-# View pods
-kubectl get pods -n {{ cookiecutter.project_slug }}
-
-# View logs
-kubectl logs -f deployment/{{ cookiecutter.project_slug }}-backend -n {{ cookiecutter.project_slug }}
-```
-
-### Using with Helm (optional)
-
-For more advanced deployments, consider creating a Helm chart based on these manifests.
 {%- endif %}
 
 ---
 
-## 🛠️ Django-style CLI
-
-Each generated project includes a powerful CLI inspired by Django's management commands. The CLI name matches your project slug (e.g., if your project is `my_app`, the CLI command is `uv run my_app`).
-
-### Built-in Commands
-
-```bash
-# Run commands from the backend directory:
-cd backend
-
-# Server
-uv run {{ cookiecutter.project_slug }} server run --reload
-uv run {{ cookiecutter.project_slug }} server routes
-
-# Database (Alembic wrapper)
-uv run {{ cookiecutter.project_slug }} db init
-uv run {{ cookiecutter.project_slug }} db migrate -m "Add users"
-uv run {{ cookiecutter.project_slug }} db upgrade
-
-# Users
-uv run {{ cookiecutter.project_slug }} user create-admin       # Create admin (interactive)
-uv run {{ cookiecutter.project_slug }} user create             # Create user (interactive)
-uv run {{ cookiecutter.project_slug }} user list               # List all users
-```
-
-> **Tip:** Use `make` commands as shortcuts - they handle the `uv run` prefix and directory automatically. Run `make help` to see all available commands.
-
-### Custom Commands
-
-Create your own commands with auto-discovery:
-
-```python
-# app/commands/seed.py
-from app.commands import command, success, error
-import click
-
-@command("seed", help="Seed database with test data")
-@click.option("--count", "-c", default=10, type=int)
-@click.option("--dry-run", is_flag=True)
-def seed_database(count: int, dry_run: bool):
-    """Seed the database with sample data."""
-    if dry_run:
-        info(f"[DRY RUN] Would create {count} records")
-        return
-
-    # Your logic here
-    success(f"Created {count} records!")
-```
-
-Commands are **automatically discovered** from `app/commands/` - just create a file and use the `@command` decorator.
-
-```bash
-uv run {{ cookiecutter.project_slug }} cmd seed --count 100
-uv run {{ cookiecutter.project_slug }} cmd seed --dry-run
-```
-
----
-
-## 🖥️ Manual Commands Reference (Windows / No Make)
-
-If you don't have `make` installed (common on Windows), use these commands directly.
-All commands should be run from the project root directory.
-
-### Setup & Development
-
-| Task | Command |
-|------|---------|
-| Install dependencies | `uv sync --directory backend --dev` |
-| Start dev server | `uv run --directory backend {{ cookiecutter.project_slug }} server run --reload` |
-| Start prod server | `uv run --directory backend {{ cookiecutter.project_slug }} server run --host 0.0.0.0 --port {{ cookiecutter.backend_port }}` |
-| Show routes | `uv run --directory backend {{ cookiecutter.project_slug }} server routes` |
-
-### Code Quality
-
-| Task | Command |
-|------|---------|
-| Format code | `uv run --directory backend ruff format app tests cli` |
-| Fix lint issues | `uv run --directory backend ruff check app tests cli --fix` |
-| Check linting | `uv run --directory backend ruff check app tests cli` |
-| Type check | `uv run --directory backend mypy app` |
-
-### Testing
-
-| Task | Command |
-|------|---------|
-| Run tests | `uv run --directory backend pytest tests/ -v` |
-| Run with coverage | `uv run --directory backend pytest tests/ -v --cov=app --cov-report=term-missing` |
-
-{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
-
-### Database
-
-| Task | Command |
-|------|---------|
-| Create migration | `uv run --directory backend {{ cookiecutter.project_slug }} db migrate -m "message"` |
-| Apply migrations | `uv run --directory backend {{ cookiecutter.project_slug }} db upgrade` |
-| Rollback migration | `uv run --directory backend {{ cookiecutter.project_slug }} db downgrade` |
-| Show current | `uv run --directory backend {{ cookiecutter.project_slug }} db current` |
-| Show history | `uv run --directory backend {{ cookiecutter.project_slug }} db history` |
-{%- endif %}
-
-{%- if cookiecutter.use_jwt %}
-
-### Users
-
-| Task | Command |
-|------|---------|
-| Create admin | `uv run --directory backend {{ cookiecutter.project_slug }} user create-admin` |
-| Create user | `uv run --directory backend {{ cookiecutter.project_slug }} user create` |
-| List users | `uv run --directory backend {{ cookiecutter.project_slug }} user list` |
-{%- endif %}
-
-{%- if cookiecutter.use_celery %}
-
-### Celery
-
-| Task | Command |
-|------|---------|
-| Start worker | `uv run --directory backend {{ cookiecutter.project_slug }} celery worker` |
-| Start beat | `uv run --directory backend {{ cookiecutter.project_slug }} celery beat` |
-| Start flower | `uv run --directory backend {{ cookiecutter.project_slug }} celery flower` |
-{%- endif %}
-
-{%- if cookiecutter.use_taskiq %}
-
-### Taskiq
-
-| Task | Command |
-|------|---------|
-| Start worker | `uv run --directory backend {{ cookiecutter.project_slug }} taskiq worker` |
-| Start scheduler | `uv run --directory backend {{ cookiecutter.project_slug }} taskiq scheduler` |
-{%- endif %}
-
-{%- if cookiecutter.use_arq %}
-
-### ARQ
-
-| Task | Command |
-|------|---------|
-| Start worker | `arq app.worker.arq_app.WorkerSettings` (from backend/) |
-{%- endif %}
-
-{%- if cookiecutter.enable_docker %}
-
-### Docker
-
-| Task | Command |
-|------|---------|
-| Start all services | `docker-compose up -d` |
-| Stop all services | `docker-compose down` |
-| View logs | `docker-compose logs -f` |
-| Build images | `docker-compose build` |
-{%- if cookiecutter.use_postgresql %}
-| Start PostgreSQL only | `docker-compose up -d db` |
-{%- endif %}
-{%- if cookiecutter.enable_redis %}
-| Start Redis only | `docker-compose up -d redis` |
-{%- endif %}
-| Start production | `docker-compose -f docker-compose.prod.yml up -d` |
-{%- endif %}
-
-### Cleanup
-
-| Task | Command (Unix) | Command (Windows PowerShell) |
-|------|----------------|------------------------------|
-| Clean cache | `find . -type d -name __pycache__ -exec rm -rf {} +` | `Get-ChildItem -Recurse -Directory -Filter __pycache__ \| Remove-Item -Recurse -Force` |
-
----
-
-## 📁 Generated Project Structure
-
-```
-my_project/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI app with lifespan
-│   │   ├── api/
-│   │   │   ├── routes/v1/       # Versioned API endpoints
-│   │   │   ├── deps.py          # Dependency injection
-│   │   │   └── router.py        # Route aggregation
-│   │   ├── core/                # Config, security, middleware
-│   │   ├── db/models/           # SQLAlchemy/MongoDB models
-│   │   ├── schemas/             # Pydantic schemas
-│   │   ├── repositories/        # Data access layer
-│   │   ├── services/            # Business logic
-│   │   ├── agents/              # AI agents with centralized prompts
-│   │   ├── commands/            # Django-style CLI commands
-│   │   └── worker/              # Background tasks
-│   ├── cli/                     # Project CLI
-│   ├── tests/                   # pytest test suite
-│   └── alembic/                 # Database migrations
-├── frontend/
-│   ├── src/
-│   │   ├── app/                 # Next.js App Router
-│   │   ├── components/          # React components
-│   │   ├── hooks/               # useChat, useWebSocket, etc.
-│   │   └── stores/              # Zustand state management
-│   └── e2e/                     # Playwright tests
-├── docker-compose.yml
-├── Makefile
-└── README.md
-```
-
-Generated projects include version metadata in `pyproject.toml` for tracking:
-
-```toml
-[tool.fastapi-fullstack]
-generator_version = "0.1.5"
-generated_at = "2024-12-21T10:30:00+00:00"
-```
-
----
-
-## ⚙️ Configuration Options
-
-### Core Options
-
-| Option | Values | Description |
-|--------|--------|-------------|
-| **Database** | `postgresql`, `mongodb`, `sqlite`, `none` | Async by default |
-| **Auth** | `jwt`, `api_key`, `both`, `none` | JWT includes user management |
-| **OAuth** | `none`, `google` | Social login |
-| **AI Framework** | `pydantic_ai`, `langchain` | Choose your AI agent framework |
-| **LLM Provider** | `openai`, `anthropic`, `openrouter` | OpenRouter only with PydanticAI |
-| **Background Tasks** | `none`, `celery`, `taskiq`, `arq` | Distributed queues |
-| **Frontend** | `none`, `nextjs` | Next.js 15 + React 19 |
-
-### Presets
-
-| Preset | Description |
-|--------|-------------|
-| `--preset production` | Full production setup with Redis, Sentry, Kubernetes, Prometheus |
-| `--preset ai-agent` | AI agent with WebSocket streaming and conversation persistence |
-| `--minimal` | Minimal project with no extras |
-
-### Integrations
-
-Select what you need:
-
-```bash
-fastapi-fullstack new
-# ✓ Redis (caching/sessions)
-# ✓ Rate limiting (slowapi)
-# ✓ Pagination (fastapi-pagination)
-# ✓ Admin Panel (SQLAdmin)
-# ✓ AI Agent (PydanticAI or LangChain)
-# ✓ Webhooks
-# ✓ Sentry
-# ✓ Logfire / LangSmith
-# ✓ Prometheus
-# ... and more
-```
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Architecture](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/architecture.md) | Repository + Service pattern, layered design |
-| [Frontend](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/frontend.md) | Next.js setup, auth, state management |
-| [AI Agent](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/ai-agent.md) | PydanticAI, tools, WebSocket streaming |
-| [Observability](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/observability.md) | Logfire integration, tracing, metrics |
-| [Deployment](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/deployment.md) | Docker, Kubernetes, production setup |
-| [Development](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/docs/development.md) | Local setup, testing, debugging |
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=vstorm-co/full-stack-ai-agent-template&type=date&legend=top-left)](https://www.star-history.com/#vstorm-co/full-stack-ai-agent-template&type=date&legend=top-left)
-
----
-
-## 🙏 Inspiration
-
-This project is inspired by:
-
-- [full-stack-fastapi-template](https://github.com/fastapi/full-stack-fastapi-template) by @tiangolo
-- [fastapi-template](https://github.com/s3rius/fastapi-template) by @s3rius
-- [FastAPI Best Practices](https://github.com/zhanymkanov/fastapi-best-practices) by @zhanymkanov
-- Django's management commands system
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read our [Contributing Guide](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/CONTRIBUTING.md) for details.
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/LICENSE) for details.
-
----
-
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/vstorm-co">VStorm</a>
-</p>
+*Generated with [Full-Stack AI Agent Template](https://github.com/vstorm-co/full-stack-ai-agent-template) v{{ cookiecutter.generator_version }}*

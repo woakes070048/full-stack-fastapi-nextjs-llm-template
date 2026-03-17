@@ -53,21 +53,21 @@ class TestRAGValidation:
                 enable_docker=False,
             )
 
-    def test_rag_with_google_drive_requires_oauth_google(self) -> None:
-        """Test that Google Drive ingestion requires OAuth Provider to be Google."""
-        with pytest.raises(ValidationError, match="Google Drive ingestion requires OAuth Provider"):
-            ProjectConfig(
-                project_name="test_rag",
-                rag_features=RAGFeatures(
-                    enable_rag=True,
-                    enable_google_drive_ingestion=True,
-                ),
-                oauth_provider=OAuthProvider.NONE,
-                enable_ai_agent=True,
-                background_tasks=BackgroundTaskType.CELERY,
-                enable_redis=True,
-                enable_docker=True,
-            )
+    def test_rag_with_google_drive_no_oauth_required(self) -> None:
+        """Test that Google Drive ingestion works without OAuth (uses service account)."""
+        config = ProjectConfig(
+            project_name="test_rag",
+            rag_features=RAGFeatures(
+                enable_rag=True,
+                enable_google_drive_ingestion=True,
+            ),
+            oauth_provider=OAuthProvider.NONE,
+            enable_ai_agent=True,
+            background_tasks=BackgroundTaskType.CELERY,
+            enable_redis=True,
+            enable_docker=True,
+        )
+        assert config.rag_features.enable_google_drive_ingestion is True
 
     def test_rag_valid_with_all_requirements(self) -> None:
         """Test that RAG is valid when all requirements are met."""
@@ -309,7 +309,6 @@ class TestRAGCookiecutterContext:
 
         assert context["pdf_parser"] == "llamaparse"
         assert context["use_llamaparse"] is True
-        assert context["use_pdfplumber"] is False
         assert context["use_python_parser"] is True  # Always True for non-PDF
 
     def test_pdfplumber_document_parser_context_flags(self) -> None:
@@ -318,16 +317,15 @@ class TestRAGCookiecutterContext:
             project_name="test",
             enable_ai_agent=True,
             rag_features=RAGFeatures(enable_rag=True),
-            pdf_parser=PdfParserType.PDFPLUMBER,
+            pdf_parser=PdfParserType.PYMUPDF,
             background_tasks=BackgroundTaskType.CELERY,
             enable_redis=True,
             enable_docker=True,
         )
         context = config.to_cookiecutter_context()
 
-        assert context["pdf_parser"] == "pdfplumber"
+        assert context["pdf_parser"] == "pymupdf"
         assert context["use_llamaparse"] is False
-        assert context["use_pdfplumber"] is True
         assert context["use_python_parser"] is True  # Always True for non-PDF
 
     def test_google_drive_ingestion_context_flags(self) -> None:

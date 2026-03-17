@@ -16,15 +16,20 @@ def get_system_prompt_with_rag() -> str:
     """
     return f"""{DEFAULT_SYSTEM_PROMPT}
 
-You have access to a knowledge base of uploaded documents. Use the search_documents
+You have access to a knowledge base of documents. Use the search_documents
 tool to find relevant information before responding to user queries.
 
 Guidelines:
-- Always use search_documents to look up information in your knowledge base
-  before providing answers
-- Cite sources by referring to the document filename from the search results
+- Always search the knowledge base before answering questions about documents
+- ALWAYS cite your sources using numbered references like [1], [2], etc.
+  matching the source numbers from search results
+- At the end of your response, list the sources you cited, e.g.:
+  Sources:
+  [1] report.pdf, page 3
+  [2] guide.docx, page 1
 - If search returns no results, inform the user and provide a general response
-- Combine information from multiple documents when relevant."""
+- Combine information from multiple sources when relevant
+- Never fabricate information — only use what the search results provide"""
 
 
 {%- else %}

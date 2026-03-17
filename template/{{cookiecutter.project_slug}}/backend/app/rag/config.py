@@ -1,4 +1,4 @@
-{%- if cookiecutter.use_milvus %}
+{%- if cookiecutter.enable_rag %}
 """RAG Config.
 
 Variables and constants used in the RAG feature to run it."""
@@ -22,9 +22,12 @@ class EmbeddingsConfig(BaseModel):
     {%- elif cookiecutter.use_voyage_embeddings %}
     model: str = "voyage-3"
     dim: int = 1024
+    {%- elif cookiecutter.use_gemini_embeddings %}
+    model: str = "gemini-embedding-exp-03-07"
+    dim: int = 3072
     {%- elif cookiecutter.use_sentence_transformers %}
     model: str = "all-MiniLM-L6-v2"
-    dim: int = 384    
+    dim: int = 384
     {%- endif %}  
     
     
@@ -53,8 +56,9 @@ class PdfParser(BaseModel):
     {%- if cookiecutter.use_llamaparse %}
     method: str = "llamaparse"
     api_key: str = ""
+    tier: str = "agentic"  # fast, cost_effective, agentic, agentic_plus
     {%- else %}
-    method: str = "pdfplumber"
+    method: str = "pymupdf"
     {%- endif %}
 
 
@@ -70,6 +74,9 @@ class RAGSettings(BaseModel):
     # Chunking
     chunk_size: int = 512
     chunk_overlap: int = 50
+    chunking_strategy: str = "recursive"  # recursive, markdown, or fixed
+    enable_hybrid_search: bool = False  # BM25 + vector fusion
+    enable_ocr: bool = False  # OCR fallback for scanned PDFs (requires tesseract)
     
     # Embeddings
     embeddings_config: EmbeddingsConfig = Field(default_factory=EmbeddingsConfig)
@@ -85,6 +92,12 @@ class RAGSettings(BaseModel):
     # PDF parsing
     pdf_parser: PdfParser = Field(default_factory=PdfParser)
     
+{%- if cookiecutter.enable_rag_image_description %}
+    # Image description
+    enable_image_description: bool = True
+    image_description_model: str = ""  # empty = use AI_MODEL from settings
+{%- endif %}
+
     {%- if cookiecutter.enable_google_drive_ingestion %}
     # Ingestion
     gdrive_ingestion: bool = True

@@ -1,4 +1,4 @@
-{%- if cookiecutter.enable_rag and cookiecutter.use_milvus and (cookiecutter.use_celery or cookiecutter.use_taskiq or cookiecutter.use_arq) %}
+{%- if cookiecutter.enable_rag and (cookiecutter.use_celery or cookiecutter.use_taskiq or cookiecutter.use_arq) %}
 """RAG scheduled tasks for collection reindexing.
 
 This module provides scheduled tasks for reindexing RAG collections.

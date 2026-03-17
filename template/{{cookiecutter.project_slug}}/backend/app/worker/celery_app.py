@@ -51,7 +51,7 @@ celery_app.conf.beat_schedule = {
     #     "task": "app.worker.tasks.examples.cleanup_task",
     #     "schedule": crontab(hour=0, minute=0),
     # },
-    {%- if cookiecutter.enable_rag and cookiecutter.use_milvus %}
+    {%- if cookiecutter.enable_rag %}
     # RAG scheduled tasks
     "rag-reindex-daily": {
         "task": "app.worker.tasks.rag_ingestion.reindex_collection",

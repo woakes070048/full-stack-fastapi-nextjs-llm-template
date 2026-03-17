@@ -5,6 +5,92 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-03-16
+
+### Added
+
+#### RAG (Retrieval-Augmented Generation)
+
+- **RAG integration** - Full RAG pipeline: document parsing → chunking → embedding → vector store → retrieval. Integrated with all 5 AI frameworks as `search_knowledge_base` tool
+- **4 vector store backends** - Milvus (Docker), Qdrant (Docker), ChromaDB (embedded), pgvector (PostgreSQL extension). Selected via `vector_store` config option
+- **4 embedding providers** - OpenAI (`text-embedding-3-small`), Voyage (`voyage-3`), Google Gemini (`gemini-embedding-exp-03-07`, multimodal), SentenceTransformers (`all-MiniLM-L6-v2`)
+- **Document parsers** - pdfplumber (PDF text), PyMuPDF (PDF text + images), LlamaParse (130+ formats via cloud API, configurable tier), python-docx (DOCX), native (TXT/MD)
+- **Image description** - Optional extraction of images from documents via PyMuPDF + LLM vision API description (OpenAI GPT-4o / Anthropic Claude / Gemini / OpenRouter). Opt-in via `enable_rag_image_description`
+- **Chunking strategies** - 3 strategies: `recursive` (default), `markdown` (split by headers), `fixed` (simple fixed-size). Configurable via `RAG_CHUNKING_STRATEGY` env var
+- **Hybrid search** - BM25 keyword search + vector similarity search with Reciprocal Rank Fusion (RRF). Enable via `RAG_HYBRID_SEARCH=true`
+- **Reranking** - Cohere API or local CrossEncoder for improved search quality
+- **Citation/source tracking** - Agent tool returns `[1] Source: filename, page X, chunk Y` format. Agent prompt instructs citation with `[1]`, `[2]` references and source list
+- **Document versioning** - `source_path` (local path / `gdrive://id` / `s3://bucket/key`) and `content_hash` (SHA256) in metadata. Automatic deduplication: re-ingest replaces old chunks. CLI: `--replace` / `--no-replace`
+- **Multi-collection search** - `RetrievalService.retrieve_multi()` searches across multiple collections. API: `collection_names: list[str]`. Frontend: "All collections" option
+- **Document sources** - Local files (CLI `rag-ingest`), Google Drive (service account, CLI `rag-sync-gdrive`), S3/MinIO (CLI `rag-sync-s3`). Extensible `BaseDocumentSource` ABC
+- **Ingestion progress** - `tqdm` progress bar in CLI `rag-ingest` with per-file status and replaced count
+- **RAG management page** - Frontend `/rag` page: collection list with stats, search preview with results, metadata filters (filetype, min score), multi-collection support, delete collection
+- **RAG API endpoints** - `GET/POST/DELETE /rag/collections`, `GET /rag/collections/{name}/info`, `GET /rag/collections/{name}/documents`, `POST /rag/search`, `DELETE /rag/collections/{name}/documents/{id}`
+- **RAG CLI commands** - `rag-collections`, `rag-ingest`, `rag-search`, `rag-drop`, `rag-stats`, `rag-sync-gdrive`, `rag-sync-s3`
+
+#### AI / LLM
+
+- **Google Gemini LLM provider** - New `--llm-provider google` option. PydanticAI: `GoogleModel` + `GoogleProvider`. LangChain/LangGraph/CrewAI/DeepAgents: `ChatGoogleGenerativeAI`. Dependencies: `pydantic-ai-slim[google]`, `langchain-google-genai`
+- **Gemini multimodal embeddings** - `GeminiEmbeddingProvider` with `embed_image()` for native multimodal (text + images in same vector space). Model: `gemini-embedding-exp-03-07` (3072 dim)
+
+#### Frontend
+
+- **Toast notification system** - `sonner` library with `<Toaster />` in providers. Toast feedback on: login, register, logout, profile save, RAG operations
+- **Profile save wired** - "Save Changes" button now calls `PATCH /users/me`. Editable email field, loading state, toast feedback
+- **Dashboard redesigned** - Stats cards (API status, account, AI framework, RAG vector count), quick action links (Chat, Knowledge Base, Profile)
+- **Settings page** - New `/settings` page with sections: Appearance (theme toggle), Application (project info, AI framework, vector store), Stack (technology badges), Security (auth type, rate limiting)
+- **Metadata filtering UI** - RAG search page: filetype dropdown, min score dropdown, "Clear filters" link
+- **Specialized tool call cards** - DateTime tool: Calendar/Clock icons with formatted date/time. RAG search: horizontal card carousel with filename, page, score badges, expandable content. Toggle between formatted and raw JSON view
+- **Sidebar "Knowledge Base" link** - Navigation item with Database icon, conditional on `enable_rag`
+
+#### DevOps
+
+- **`make quickstart`** - One command to install deps, start Docker services, run migrations, create admin user
+- **Vercel deployment** - `frontend/vercel.json` config + `make vercel-deploy` target with env var instructions
+- **Qdrant Docker service** - Added to `docker-compose.dev.yml` with health check, volume, and backend env vars
+
+### Changed
+
+- **Document ingestion is CLI-only** - Removed upload API endpoints (`POST /collections/{name}/upload`, `POST /collections/{name}/ingest`). Removed frontend upload button (paperclip in chat). Ingestion exclusively via CLI commands
+- **`RetrievalService` renamed** - `MilvusRetrievalService` → `RetrievalService` (now backend-agnostic, works with any `BaseVectorStore`)
+- **Docker validation relaxed** - Docker only required for Milvus and Qdrant vector stores. ChromaDB (embedded) and pgvector (existing PostgreSQL) work without Docker
+- **`.env.example` restructured** - RAG section moved from `use_milvus` to `enable_rag` guard. Added all missing env vars (chunking, hybrid search, vector store settings)
+- **README.md rewritten** - Updated for 5 frameworks, 4 providers, RAG section with vector store/embedding tables, deployment docs
+- **CLAUDE.md / AGENTS.md updated** - Both project-level and template versions updated with RAG, Gemini, vector stores
+
+### Fixed
+
+#### PR #50 RAG Bug Fixes (28 issues found and fixed)
+
+- **`schedules.py` regression** - Outer conditional broke Taskiq scheduling for all non-RAG projects. Fixed: restored `use_taskiq` guard, RAG schedule inside nested conditional
+- **Duplicate Milvus settings** - `core/config.py` had Milvus settings twice. Fixed: removed duplicate, nested under `use_milvus` inside `enable_rag`
+- **Env vars not wired to RAGSettings** - `RAG_CHUNK_SIZE`, `RAG_DEFAULT_COLLECTION` ignored at runtime. Fixed: wired through `Settings.rag` computed property
+- **Copy-paste etcd command in prod MinIO** - `docker-compose.prod.yml` minio had etcd command. Fixed: removed
+- **Frontend type mismatch** - `RAGSearchResult.text` vs backend `content`. Fixed: renamed to `content`, added `parent_doc_id`
+- **Milvus filter injection** - `document_id` interpolated unsanitized. Fixed: strip `"` and `\` before interpolation
+- **File upload security** - No filename sanitization, no size limit. Fixed: `_safe_filename()`, `MAX_UPLOAD_SIZE=50MB`, HTTP 413
+- **Hardcoded MinIO credentials in prod** - Fixed: env var substitution `${MINIO_ROOT_USER}` / `${MINIO_ROOT_PASSWORD}`
+- **`milvusdb/milvus:latest` in prod** - Fixed: pinned to `v2.5.10`
+- **`processor.parser.allowed` AttributeError** - Fixed: use `DocumentExtensions` enum directly
+- **Inconsistent default collection** - sync wrapper `"default"` vs async `"documents"`. Fixed: both `"documents"`
+- **`RerankService` NameError when disabled** - Fixed: `from __future__ import annotations`
+- **`print()` in reranker.py** - Fixed: all 13 `print()` → `logger.info()`
+- **`console.log` in rag-api.ts** - Fixed: removed debug statements
+- **Legacy typing imports in schemas** - Fixed: `List`→`list`, `Dict`→`dict`, `Optional`→`| None`
+- **Hardcoded `/tmp/rag_uploads`** - Fixed: `tempfile.gettempdir()`
+- **Inconsistent frontend auth** - Fixed: all RAG routes use `NEXT_PUBLIC_AUTH_ENABLED` pattern
+- **Inline `import logging` in routes** - Fixed: moved to module level
+- **Unconditional pdfplumber import** - Fixed: conditional on `not use_llamaparse`
+- **Chat page not removed when i18n disabled** - Fixed: remove both `[locale]/` and direct paths
+- **`stores/index.ts` unconditional chat exports** - Fixed: gated behind `enable_ai_agent`
+- **`types/index.ts` unconditional chat export** - Fixed: gated behind `enable_ai_agent`
+- **`chat-sidebar-store.ts` not cleaned up** - Fixed: added to post-gen hook
+- **`rag/config.py` gated by `use_milvus`** - Fixed: changed to `enable_rag`
+- **Worker tasks gated by `use_milvus`** - Fixed: `rag_ingestion.py`, `celery_app.py`, `arq_app.py` changed to `enable_rag`
+- **pgvector SQL injection** - Fixed: `_validate_collection_name()` regex + `_table()` helper in all methods
+- **pgvector IVFFlat on empty table** - Fixed: changed to HNSW index
+- **Duplicate `logger` in reranker.py** - Fixed: removed duplicate, reordered imports
+
 ## [0.2.1] - 2026-03-05
 
 ### Added

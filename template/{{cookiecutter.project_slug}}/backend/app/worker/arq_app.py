@@ -29,7 +29,7 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 # === Example Tasks ===
 # Tasks are defined as regular async functions
 
-{%- if cookiecutter.enable_rag and cookiecutter.use_milvus %}
+{%- if cookiecutter.enable_rag %}
 from app.worker.tasks.rag_ingestion import reindex_collection_arq
 {%- endif %}
 
@@ -146,7 +146,7 @@ class WorkerSettings:
         example_task,
         long_running_task,
         send_email_task,
-        {%- if cookiecutter.enable_rag and cookiecutter.use_milvus %}
+        {%- if cookiecutter.enable_rag %}
         reindex_collection_arq,
         {%- endif %}
     ]
@@ -155,7 +155,7 @@ class WorkerSettings:
     cron_jobs = [
         cron(scheduled_example, minute={0, 15, 30, 45}),  # Every 15 minutes
         # cron(scheduled_example, minute=0, hour=0),  # Daily at midnight
-        {%- if cookiecutter.enable_rag and cookiecutter.use_milvus %}
+        {%- if cookiecutter.enable_rag %}
         cron(reindex_collection_arq, hour=2, minute=0),  # Daily at 2 AM
         {%- endif %}
     ]

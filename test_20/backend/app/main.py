@@ -1,8 +1,11 @@
 """FastAPI application entry point."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TypedDict
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
@@ -56,24 +59,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[LifespanState, None]:
     setup_cache(redis_client)
     from app.core.config import settings
 
-    embedder = EmbeddingService(settings=settings.rag)
-    embedder.warmup()
-    state["embedding_service"] = embedder
-    # Initialize and warmup reranker (downloads model or validates API key)
-    from app.rag.reranker import RerankService
-
-    rerank_service = RerankService(settings=settings.rag)
-    rerank_service.warmup()
-    state["rerank_service"] = rerank_service
-    # Warmup Milvus and verify health
     try:
-        vector_store = MilvusVectorStore(settings=settings.rag, embedding_service=embedder)
-        # Verify connectivity
-        await vector_store.client.list_collections()
-        state["vector_store"] = vector_store
-
+        embedder = EmbeddingService(settings=settings.rag)
+        embedder.warmup()
+        state["embedding_service"] = embedder
     except Exception as e:
-        raise RuntimeError("Milvus is not ready. Check logs for details.") from e
+        logger.error(f"Embedding service warmup failed: {e}. RAG will not be available.")
+
+    # Initialize and warmup reranker (downloads model or validates API key)
+    try:
+        from app.rag.reranker import RerankService
+
+        rerank_service = RerankService(settings=settings.rag)
+        rerank_service.warmup()
+        state["rerank_service"] = rerank_service
+    except Exception as e:
+        logger.warning(f"Reranker warmup failed: {e}. Reranking will be disabled.")
+
+    # Warmup Milvus and verify health
+    if "embedding_service" in state:
+        try:
+            vector_store = MilvusVectorStore(settings=settings.rag, embedding_service=embedder)
+            await vector_store.client.list_collections()
+            state["vector_store"] = vector_store
+        except Exception as e:
+            logger.error(f"Milvus connection failed: {e}. Vector store will not be available.")
     yield state
 
     # === Shutdown ===

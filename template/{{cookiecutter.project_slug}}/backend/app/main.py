@@ -1,10 +1,13 @@
 """FastAPI application entry point."""
 
+import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 {%- if cookiecutter.enable_redis or cookiecutter.enable_rag %}
 from typing import TypedDict
 {%- endif %}
+
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI
 {%- if cookiecutter.enable_orjson %}
@@ -30,6 +33,14 @@ from app.clients.redis import RedisClient
 from app.rag.embeddings import EmbeddingService
 {%- if cookiecutter.use_milvus %}
 from app.rag.vectorstore import MilvusVectorStore
+{%- elif cookiecutter.use_qdrant %}
+from app.rag.vectorstore import QdrantVectorStore
+{%- elif cookiecutter.use_chromadb %}
+from app.rag.vectorstore import ChromaVectorStore
+{%- elif cookiecutter.use_pgvector %}
+from app.rag.vectorstore import PgVectorStore
+{%- endif %}
+from app.rag.vectorstore import BaseVectorStore
 {%- endif %}
 {%- endif %}
 
@@ -42,9 +53,7 @@ class LifespanState(TypedDict, total=False):
 {%- endif %}
 {%- if cookiecutter.enable_rag %}
     embedding_service: EmbeddingService
-{%- if cookiecutter.use_milvus %}
-    vector_store: MilvusVectorStore
-{%- endif %}
+    vector_store: BaseVectorStore
 {%- endif %}
 {%- endif %}
 
@@ -102,28 +111,57 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[{% if cookiecutter.enable_red
 
 {%- if cookiecutter.enable_rag %}
     from app.core.config import settings
-    embedder = EmbeddingService(settings=settings.rag)
-    embedder.warmup()
-    state["embedding_service"] = embedder
+    try:
+        embedder = EmbeddingService(settings=settings.rag)
+        embedder.warmup()
+        state["embedding_service"] = embedder
+    except Exception as e:
+        logger.error(f"Embedding service warmup failed: {e}. RAG will not be available.")
 
 {%- if cookiecutter.enable_reranker %}
     # Initialize and warmup reranker (downloads model or validates API key)
-    from app.rag.reranker import RerankService
-    rerank_service = RerankService(settings=settings.rag)
-    rerank_service.warmup()
-    state["rerank_service"] = rerank_service
+    try:
+        from app.rag.reranker import RerankService
+        rerank_service = RerankService(settings=settings.rag)
+        rerank_service.warmup()
+        state["rerank_service"] = rerank_service
+    except Exception as e:
+        logger.warning(f"Reranker warmup failed: {e}. Reranking will be disabled.")
 {%- endif %}
 
 {%- if cookiecutter.use_milvus %}
     # Warmup Milvus and verify health
-    try:
-        vector_store = MilvusVectorStore(settings=settings.rag, embedding_service=embedder)
-        # Verify connectivity
-        await vector_store.client.list_collections()
-        state["vector_store"] = vector_store
-        
-    except Exception as e:
-        raise RuntimeError("Milvus is not ready. Check logs for details.") from e
+    if "embedding_service" in state:
+        try:
+            vector_store = MilvusVectorStore(settings=settings.rag, embedding_service=embedder)
+            await vector_store.client.list_collections()
+            state["vector_store"] = vector_store
+        except Exception as e:
+            logger.error(f"Milvus connection failed: {e}. Vector store will not be available.")
+{%- endif %}
+{%- if cookiecutter.use_qdrant %}
+    if "embedding_service" in state:
+        try:
+            vector_store = QdrantVectorStore(settings=settings.rag, embedding_service=embedder)
+            state["vector_store"] = vector_store
+        except Exception as e:
+            logger.error(f"Qdrant connection failed: {e}. Vector store will not be available.")
+{%- endif %}
+{%- if cookiecutter.use_chromadb %}
+    if "embedding_service" in state:
+        try:
+            vector_store = ChromaVectorStore(settings=settings.rag, embedding_service=embedder)
+            state["vector_store"] = vector_store
+        except Exception as e:
+            logger.error(f"ChromaDB init failed: {e}. Vector store will not be available.")
+{%- endif %}
+{%- if cookiecutter.use_pgvector %}
+    if "embedding_service" in state:
+        try:
+            vector_store = PgVectorStore(settings=settings.rag, embedding_service=embedder)
+            state["vector_store"] = vector_store
+        except Exception as e:
+            logger.error(f"pgvector connection failed: {e}. Vector store will not be available.")
 {%- endif %}
 {%- endif %}
 

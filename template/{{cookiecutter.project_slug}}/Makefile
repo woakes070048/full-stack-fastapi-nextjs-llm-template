@@ -162,6 +162,7 @@ taskiq-scheduler:
 
 # === Docker: Backend (Development) ===
 docker-up:
+	docker-compose build app
 	docker-compose up -d
 	@echo ""
 	@echo "✅ Backend services started!"

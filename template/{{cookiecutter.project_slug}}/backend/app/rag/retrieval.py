@@ -265,15 +265,33 @@ class RetrievalService(BaseRetrievalService):
             if res.score >= min_score
         ]
 
-        # Log filtered results
-        for i, r in enumerate(filtered_results[:3]):
+        # Step 4: Deduplicate — keep highest-scored result per unique chunk
+        seen_keys: set[str] = set()
+        deduped_results: list[SearchResult] = []
+        for r in filtered_results:
+            key = (
+                f"{r.parent_doc_id}:{r.metadata.get('chunk_num', '')}"
+                if r.parent_doc_id
+                else hashlib.md5(r.content.encode()).hexdigest()
+            )
+            if key not in seen_keys:
+                seen_keys.add(key)
+                deduped_results.append(r)
+
+        if len(deduped_results) < len(filtered_results):
+            logger.info(
+                f"[RETRIEVAL] Deduplicated: {len(filtered_results)} -> {len(deduped_results)} results"
+            )
+
+        # Log final results
+        for i, r in enumerate(deduped_results[:3]):
             logger.debug(
                 f"[RETRIEVAL] Final result #{i+1}: score={r.score:.4f}, "
                 f"content='{r.content[:50]}...'"
             )
 
         # Apply final limit
-        final_results = filtered_results[:limit]
+        final_results = deduped_results[:limit]
 
         total_time = time.time() - start_time
         logger.info(
@@ -313,7 +331,21 @@ class RetrievalService(BaseRetrievalService):
                 logger.warning(f"[RETRIEVAL] Failed to search collection '{name}': {e}")
 
         all_results.sort(key=lambda r: r.score, reverse=True)
-        return all_results[:limit]
+
+        # Deduplicate across collections
+        seen_keys: set[str] = set()
+        deduped: list[SearchResult] = []
+        for r in all_results:
+            key = (
+                f"{r.parent_doc_id}:{r.metadata.get('chunk_num', '')}"
+                if r.parent_doc_id
+                else hashlib.md5(r.content.encode()).hexdigest()
+            )
+            if key not in seen_keys:
+                seen_keys.add(key)
+                deduped.append(r)
+
+        return deduped[:limit]
 
     async def retrieve_by_document(
         self,

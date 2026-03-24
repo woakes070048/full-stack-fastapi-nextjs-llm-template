@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/models")
+@router.get("/agent/models")
 async def list_models():
     """Return available LLM models and the current default."""
     from app.core.config import settings
@@ -632,7 +632,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/models")
+@router.get("/agent/models")
 async def list_models():
     """Return available LLM models and the current default."""
     from app.core.config import settings
@@ -1101,7 +1101,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/models")
+@router.get("/agent/models")
 async def list_models():
     """Return available LLM models and the current default."""
     from app.core.config import settings
@@ -1572,7 +1572,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/models")
+@router.get("/agent/models")
 async def list_models():
     """Return available LLM models and the current default."""
     from app.core.config import settings
@@ -2066,7 +2066,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.get("/models")
+@router.get("/agent/models")
 async def list_models():
     """Return available LLM models and the current default."""
     from app.core.config import settings

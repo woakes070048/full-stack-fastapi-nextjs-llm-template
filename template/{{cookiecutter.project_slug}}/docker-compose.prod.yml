@@ -374,9 +374,7 @@ services:
 {%- if cookiecutter.use_celery %}
 
   celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: {{ cookiecutter.project_slug }}_backend:dev
     container_name: {{ cookiecutter.project_slug }}_celery_worker
     volumes:
       - media_data:/app/media
@@ -408,6 +406,8 @@ services:
     networks:
       - backend-internal
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
 {%- if cookiecutter.use_postgresql %}
@@ -430,9 +430,7 @@ services:
           memory: 256M
 
   celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: {{ cookiecutter.project_slug }}_backend:dev
     container_name: {{ cookiecutter.project_slug }}_celery_beat
     command: celery -A app.worker.celery_app beat --loglevel=warning
     env_file:
@@ -456,6 +454,8 @@ services:
     networks:
       - backend-internal
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -466,9 +466,7 @@ services:
           memory: 128M
 
   flower:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: {{ cookiecutter.project_slug }}_backend:dev
     container_name: {{ cookiecutter.project_slug }}_flower
     command: celery -A app.worker.celery_app flower --port=5555
     env_file:
@@ -502,6 +500,8 @@ services:
       - "5555:5555"
 {%- endif %}
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -515,9 +515,7 @@ services:
 {%- if cookiecutter.use_taskiq %}
 
   taskiq_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: {{ cookiecutter.project_slug }}_backend:dev
     container_name: {{ cookiecutter.project_slug }}_taskiq_worker
     volumes:
       - media_data:/app/media
@@ -552,6 +550,8 @@ services:
     networks:
       - backend-internal
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
 {%- if cookiecutter.use_postgresql %}
@@ -574,9 +574,7 @@ services:
           memory: 256M
 
   taskiq_scheduler:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: {{ cookiecutter.project_slug }}_backend:dev
     container_name: {{ cookiecutter.project_slug }}_taskiq_scheduler
     command: taskiq scheduler app.worker.taskiq_app:scheduler
     env_file:
@@ -600,6 +598,8 @@ services:
     networks:
       - backend-internal
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -613,9 +613,7 @@ services:
 {%- if cookiecutter.use_arq %}
 
   arq_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: {{ cookiecutter.project_slug }}_backend:dev
     container_name: {{ cookiecutter.project_slug }}_arq_worker
     volumes:
       - media_data:/app/media
@@ -653,6 +651,8 @@ services:
     networks:
       - backend-internal
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
 {%- if cookiecutter.use_postgresql %}

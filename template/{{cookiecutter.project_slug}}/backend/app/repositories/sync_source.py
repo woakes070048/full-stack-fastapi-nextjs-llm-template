@@ -39,19 +39,20 @@ async def get_due_for_sync(db: AsyncSession) -> list[SyncSource]:
     Returns active sources with a schedule where enough time has elapsed
     since the last sync (or that have never been synced).
     """
+    from datetime import timedelta
     now = datetime.now(UTC)
+    # Fetch all active scheduled sources, filter in Python (avoids DB-specific interval syntax)
     query = select(SyncSource).where(
         SyncSource.is_active == True,  # noqa: E712
         SyncSource.schedule_minutes.isnot(None),
-        or_(
-            SyncSource.last_sync_at.is_(None),
-            SyncSource.last_sync_at
-            + func.make_interval(secs=SyncSource.schedule_minutes * 60)
-            <= now,
-        ),
     )
     result = await db.execute(query)
-    return list(result.scalars().all())
+    sources = list(result.scalars().all())
+    return [
+        s for s in sources
+        if s.last_sync_at is None
+        or s.last_sync_at + timedelta(minutes=s.schedule_minutes) <= now
+    ]
 
 
 async def create(

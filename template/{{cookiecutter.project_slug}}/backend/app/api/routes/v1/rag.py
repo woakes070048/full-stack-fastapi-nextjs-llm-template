@@ -106,12 +106,19 @@ async def create_collection(
 async def drop_collection(
     name: str,
     vector_store: VectorStoreSvc,
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
+    rag_doc_svc: RAGDocumentSvc = None,
+{%- endif %}
 {%- if cookiecutter.use_jwt %}
-    _: CurrentAdmin,
+    _: CurrentAdmin = None,
 {%- endif %}
 ):
-    """Drop an entire collection and all its vectors."""
+    """Drop an entire collection — vectors and all SQL document records."""
     await vector_store.delete_collection(name)
+{%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
+    if rag_doc_svc:
+        await rag_doc_svc.delete_by_collection(name)
+{%- endif %}
 
 
 @router.get("/collections/{name}/info", response_model=RAGCollectionInfo)
@@ -264,9 +271,9 @@ async def ingest_file(
     await vector_store._ensure_collection(name)
 {%- if cookiecutter.use_celery or cookiecutter.use_taskiq or cookiecutter.use_arq %}
 
-    # Save to temp file for background worker
+    # Save to shared media volume (accessible by both app and worker containers)
     import os
-    tmp_dir = os.path.join(tempfile.gettempdir(), "rag_ingest")
+    tmp_dir = os.path.join(str(app_settings.MEDIA_DIR), "_rag_tmp")
     os.makedirs(tmp_dir, exist_ok=True)
     tmp_path = os.path.join(tmp_dir, f"{str(doc_id)}{ext}")
     with open(tmp_path, "wb") as f:

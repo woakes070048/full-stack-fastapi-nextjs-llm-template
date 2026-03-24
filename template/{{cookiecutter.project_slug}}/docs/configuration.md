@@ -78,6 +78,7 @@ Production validation: `API_KEY` cannot use the default value in
 | `GOOGLE_CLIENT_ID` | (empty) | Google OAuth2 client ID |
 | `GOOGLE_CLIENT_SECRET` | (empty) | Google OAuth2 client secret |
 | `GOOGLE_REDIRECT_URI` | `http://localhost:{{ cookiecutter.backend_port }}/api/v1/oauth/google/callback` | OAuth2 callback URL |
+| `FRONTEND_URL` | `http://localhost:{{ cookiecutter.frontend_port }}` | Frontend URL for OAuth2 redirects |
 {%- endif %}
 
 {%- if cookiecutter.use_postgresql %}

@@ -8,19 +8,10 @@ interface RouteParams {
 
 // GET /api/v1/rag/collections/:name/info - Get collection info
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
-  let accessToken: string | undefined;
-
-  if (authEnabled) {
-    accessToken = request.cookies.get("access_token")?.value;
-    if (!accessToken) {
-      return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
-    }
-  }
-
   try {
     const { name } = await params;
     const headers: Record<string, string> = {};
+    const accessToken = request.cookies.get("access_token")?.value;
     if (accessToken) {
       headers["Authorization"] = `Bearer ${accessToken}`;
     }
@@ -40,19 +31,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/v1/rag/collections/:name - Delete collection
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  const authEnabled = process.env.NEXT_PUBLIC_AUTH_ENABLED === "true";
-  let accessToken: string | undefined;
-
-  if (authEnabled) {
-    accessToken = request.cookies.get("access_token")?.value;
-    if (!accessToken) {
-      return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
-    }
-  }
-
   try {
     const { name } = await params;
     const headers: Record<string, string> = {};
+    const accessToken = request.cookies.get("access_token")?.value;
     if (accessToken) {
       headers["Authorization"] = `Bearer ${accessToken}`;
     }

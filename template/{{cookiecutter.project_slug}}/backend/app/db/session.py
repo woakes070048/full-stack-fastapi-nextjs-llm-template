@@ -52,6 +52,37 @@ async def get_db_context() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
+@asynccontextmanager
+async def get_worker_db_context() -> AsyncGenerator[AsyncSession, None]:
+    """Get a short-lived async session for background workers (Celery/ARQ).
+
+    Creates a fresh engine with NullPool on every call so there are no
+    cross-fork / cross-event-loop connection issues.  The engine is disposed
+    automatically when the context manager exits.
+    """
+    from sqlalchemy.pool import NullPool
+
+    worker_engine = create_async_engine(
+        settings.DATABASE_URL,
+        echo=False,
+        poolclass=NullPool,
+    )
+    factory = async_sessionmaker(
+        worker_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    async with factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await worker_engine.dispose()
+
+
 async def close_db() -> None:
     """Close database connections."""
     await engine.dispose()

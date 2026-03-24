@@ -749,7 +749,7 @@ class LlamaParseParser(BaseDocumentParser):
         )
 {%- endif %}
 
-{%- if cookiecutter.use_liteparse %}
+{%- if cookiecutter.use_liteparse and not cookiecutter.use_all_pdf_parsers %}
 
 
 class LiteParseParser(BaseDocumentParser):
@@ -838,7 +838,7 @@ class DocumentProcessor:
         {%- if cookiecutter.use_all_pdf_parsers %}
         self.docx_parser = DocxDocumentParser()
         {%- if cookiecutter.enable_rag_image_description %}
-        self.image_describer = self._init_image_describer(settings)
+        self.image_describer = self._init_image_describer(settings) if settings.enable_image_description else None
         {%- else %}
         self.image_describer = None
         {%- endif %}
@@ -858,7 +858,7 @@ class DocumentProcessor:
         self.docx_parser = DocxDocumentParser()
         {%- if cookiecutter.enable_rag_image_description %}
         # Image describer for LLM-based image descriptions and OCR fallback
-        self.image_describer = self._init_image_describer(settings)
+        self.image_describer = self._init_image_describer(settings) if settings.enable_image_description else None
         self.pdf_parser = PyMuPDFParser(
             enable_ocr=settings.enable_ocr,
             image_describer=self.image_describer,

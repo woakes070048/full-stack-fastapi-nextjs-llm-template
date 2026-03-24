@@ -244,6 +244,8 @@ services:
     networks:
       - backend
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
 {%- if cookiecutter.use_postgresql %}
@@ -272,6 +274,8 @@ services:
     networks:
       - backend
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -292,6 +296,8 @@ services:
     networks:
       - backend
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -331,6 +337,8 @@ services:
     networks:
       - backend
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
 {%- if cookiecutter.use_postgresql %}
@@ -365,6 +373,8 @@ services:
     networks:
       - backend
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -405,6 +415,8 @@ services:
     networks:
       - backend
     depends_on:
+      app:
+        condition: service_started
       redis:
         condition: service_healthy
 {%- if cookiecutter.use_postgresql %}

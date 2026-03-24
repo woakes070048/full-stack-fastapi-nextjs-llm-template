@@ -150,6 +150,20 @@ class RAGDocumentService:
         await self.db.delete(doc)
         await self.db.commit()
 
+    async def delete_by_collection(self, collection_name: str) -> int:
+        """Delete all RAG document records for a collection.
+
+        Returns:
+            Number of deleted records.
+        """
+        from sqlalchemy import delete as sql_delete
+
+        result = await self.db.execute(
+            sql_delete(RAGDocument).where(RAGDocument.collection_name == collection_name)
+        )
+        await self.db.commit()
+        return result.rowcount
+
     async def get_download_info(self, doc_id: str) -> tuple[str, str, str]:
         """Get file download information for a document.
 

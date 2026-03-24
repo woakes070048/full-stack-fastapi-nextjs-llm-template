@@ -113,10 +113,10 @@ def sync_single_source_task(self, source_id: str, sync_log_id: str | None = None
 def check_scheduled_syncs() -> None:
     """Periodic task: find sources due for sync and dispatch individual tasks."""
     async def _check():
-        from app.db.session import get_db_context
+        from app.db.session import get_worker_db_context
         from app.repositories import sync_source as sync_source_repo
 
-        async with get_db_context() as db:
+        async with get_worker_db_context() as db:
             sources = await sync_source_repo.get_due_for_sync(db)
             for source in sources:
                 sync_single_source_task.delay(str(source.id))
@@ -136,10 +136,10 @@ async def sync_single_source_task(source_id: str, sync_log_id: str | None = None
 @broker.task
 async def check_scheduled_syncs() -> None:
     """Periodic task: find sources due for sync and dispatch individual tasks."""
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.repositories import sync_source as sync_source_repo
 
-    async with get_db_context() as db:
+    async with get_worker_db_context() as db:
         sources = await sync_source_repo.get_due_for_sync(db)
         for source in sources:
             await sync_single_source_task.kiq(str(source.id))
@@ -155,10 +155,10 @@ async def sync_single_source_task(ctx: dict, source_id: str, sync_log_id: str | 
 
 async def check_scheduled_syncs(ctx: dict) -> None:
     """Periodic task: find sources due for sync and dispatch individual tasks."""
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.repositories import sync_source as sync_source_repo
 
-    async with get_db_context() as db:
+    async with get_worker_db_context() as db:
         sources = await sync_source_repo.get_due_for_sync(db)
         pool = ctx["redis"]
         for source in sources:
@@ -173,7 +173,7 @@ async def _run_ingestion(rag_document_id: str, collection_name: str, filepath: s
     from datetime import UTC, datetime
     from uuid import UUID
     from app.core.config import settings
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.db.models.rag_document import RAGDocument
     from app.rag.documents import DocumentProcessor
     from app.rag.embeddings import EmbeddingService
@@ -197,7 +197,7 @@ async def _run_ingestion(rag_document_id: str, collection_name: str, filepath: s
     file_path = Path(filepath)
     try:
         result = await ingestion_service.ingest_file(filepath=file_path, collection_name=collection_name, replace=replace, source_path=source_path)
-        async with get_db_context() as db:
+        async with get_worker_db_context() as db:
             rag_doc = await db.get(RAGDocument, UUID(rag_document_id))
             if rag_doc:
                 rag_doc.status = "done"
@@ -217,7 +217,7 @@ async def _run_sync(sync_log_id: str, source: str, collection_name: str, mode: s
     from datetime import UTC, datetime
     from uuid import UUID
     from app.core.config import settings
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.db.models.sync_log import SyncLog
     from app.db.models.rag_document import RAGDocument
     from app.rag.documents import DocumentProcessor
@@ -256,7 +256,7 @@ async def _run_sync(sync_log_id: str, source: str, collection_name: str, mode: s
 
     for filepath in files:
         # Check if sync was cancelled
-        async with get_db_context() as db:
+        async with get_worker_db_context() as db:
             sync_log_check = await db.get(SyncLog, UUID(sync_log_id))
             if sync_log_check and sync_log_check.status == "cancelled":
                 logger.info(f"Sync {sync_log_id} cancelled by user")
@@ -292,7 +292,7 @@ async def _run_sync(sync_log_id: str, source: str, collection_name: str, mode: s
                     updated += 1
                 else:
                     ingested += 1
-                async with get_db_context() as db:
+                async with get_worker_db_context() as db:
                     rag_doc = RAGDocument(collection_name=collection_name, filename=filepath.name,
                         filesize=filepath.stat().st_size, filetype=filepath.suffix.lstrip(".").lower(),
                         status="done", vector_document_id=result.document_id, completed_at=datetime.now(UTC))
@@ -304,7 +304,7 @@ async def _run_sync(sync_log_id: str, source: str, collection_name: str, mode: s
             logger.warning(f"Sync file error {filepath.name}: {e}")
             failed += 1
 
-    async with get_db_context() as db:
+    async with get_worker_db_context() as db:
         sync_log = await db.get(SyncLog, UUID(sync_log_id))
         if sync_log:
             sync_log.status = "done" if failed == 0 else "error"
@@ -324,10 +324,10 @@ async def _run_sync(sync_log_id: str, source: str, collection_name: str, mode: s
 async def _update_status(rag_document_id: str, status: str, error_message: str | None = None):
     from datetime import UTC, datetime
     from uuid import UUID
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.db.models.rag_document import RAGDocument
     try:
-        async with get_db_context() as db:
+        async with get_worker_db_context() as db:
             rag_doc = await db.get(RAGDocument, UUID(rag_document_id))
             if rag_doc:
                 rag_doc.status = status
@@ -356,10 +356,10 @@ async def _notify_ws(rag_document_id: str, status: str, filename: str):
 async def _update_sync_log(sync_log_id: str, status: str, error_message: str | None = None):
     from datetime import UTC, datetime
     from uuid import UUID
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.db.models.sync_log import SyncLog
     try:
-        async with get_db_context() as db:
+        async with get_worker_db_context() as db:
             sync_log = await db.get(SyncLog, UUID(sync_log_id))
             if sync_log:
                 sync_log.status = status
@@ -378,7 +378,7 @@ async def _run_source_sync(source_id: str, sync_log_id: str | None = None) -> di
     to a temporary directory, and ingests each into the vector store.
     """
     from app.core.config import settings
-    from app.db.session import get_db_context
+    from app.db.session import get_worker_db_context
     from app.services.sync_source import SyncSourceService
     from app.services.rag_sync import RAGSyncService
     from app.rag.connectors import CONNECTOR_REGISTRY
@@ -395,7 +395,7 @@ async def _run_source_sync(source_id: str, sync_log_id: str | None = None) -> di
     from app.rag.vectorstore import PgVectorStore as VectorStore
 {%- endif %}
 
-    async with get_db_context() as db:
+    async with get_worker_db_context() as db:
         source_svc = SyncSourceService(db)
 
         source = await source_svc.get_source(source_id)
@@ -448,7 +448,7 @@ async def _run_source_sync(source_id: str, sync_log_id: str | None = None) -> di
         logger.error(f"Source sync failed for {source_id}: {e}")
         failed = max(failed, 1)
 
-    async with get_db_context() as db:
+    async with get_worker_db_context() as db:
         sync_svc = RAGSyncService(db)
         source_svc = SyncSourceService(db)
         try:

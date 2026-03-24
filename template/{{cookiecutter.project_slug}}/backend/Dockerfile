@@ -39,8 +39,9 @@ COPY --from=builder /app /app
 # Add venv to path
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Create non-root user
+# Create non-root user and writable directories
 RUN adduser --disabled-password --gecos "" appuser && \
+    mkdir -p /app/media /app/data /app/chroma_data /app/models_cache && \
     chown -R appuser:appuser /app
 USER appuser
 

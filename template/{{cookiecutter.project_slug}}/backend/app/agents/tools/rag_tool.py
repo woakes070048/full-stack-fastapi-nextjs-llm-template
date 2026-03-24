@@ -20,6 +20,7 @@ def _get_retrieval_service() -> "BaseRetrievalService":
     if _retrieval_service is not None:
         return _retrieval_service
     # Import here to avoid circular imports at module load time
+    from app.core.config import settings
     from app.rag.retrieval import RetrievalService
 {%- if cookiecutter.use_milvus %}
     from app.rag.vectorstore import MilvusVectorStore
@@ -31,20 +32,19 @@ def _get_retrieval_service() -> "BaseRetrievalService":
     from app.rag.vectorstore import PgVectorStore
 {%- endif %}
     from app.rag.embeddings import EmbeddingService
-    from app.rag.config import RAGSettings
 
-    settings = RAGSettings()
-    embedding_service = EmbeddingService(settings)
+    rag_settings = settings.rag
+    embedding_service = EmbeddingService(rag_settings)
 {%- if cookiecutter.use_milvus %}
-    vector_store = MilvusVectorStore(settings, embedding_service)
+    vector_store = MilvusVectorStore(rag_settings, embedding_service)
 {%- elif cookiecutter.use_qdrant %}
-    vector_store = QdrantVectorStore(settings, embedding_service)
+    vector_store = QdrantVectorStore(rag_settings, embedding_service)
 {%- elif cookiecutter.use_chromadb %}
-    vector_store = ChromaVectorStore(settings, embedding_service)
+    vector_store = ChromaVectorStore(rag_settings, embedding_service)
 {%- elif cookiecutter.use_pgvector %}
-    vector_store = PgVectorStore(settings, embedding_service)
+    vector_store = PgVectorStore(rag_settings, embedding_service)
 {%- endif %}
-    _retrieval_service = RetrievalService(vector_store, settings)
+    _retrieval_service = RetrievalService(vector_store, rag_settings)
     return _retrieval_service
 
 

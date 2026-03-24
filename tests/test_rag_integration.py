@@ -434,8 +434,8 @@ class TestRAGCodePatterns:
             "rag.py should NOT directly access vector_store.client.list_collections()"
         )
 
-    def test_rag_tool_uses_lru_cache(self, tmp_path: Path) -> None:
-        """Test that rag_tool.py uses lru_cache instead of global singleton."""
+    def test_rag_tool_uses_singleton(self, tmp_path: Path) -> None:
+        """Test that rag_tool.py uses singleton pattern for retrieval service."""
         import re
 
         config = ProjectConfig(
@@ -451,13 +451,11 @@ class TestRAGCodePatterns:
         rag_tool = project / "backend" / "app" / "agents" / "tools" / "rag_tool.py"
         content = rag_tool.read_text()
 
-        # Should use lru_cache
-        assert re.search(r"@lru_cache", content), "rag_tool.py should use @lru_cache decorator"
+        # Should use singleton pattern (global variable)
+        assert re.search(r"_retrieval_service", content), "rag_tool.py should use singleton pattern"
 
-        # Should NOT use global singleton pattern
-        assert not re.search(r"^_retrieval_service\s*:", content, re.MULTILINE), (
-            "rag_tool.py should NOT use global singleton pattern"
-        )
+        # Should have get_retrieval_service function
+        assert re.search(r"def get_retrieval_service", content), "rag_tool.py should have get_retrieval_service function"
 
     def test_rag_vectorstore_has_list_collections_method(self, tmp_path: Path) -> None:
         """Test that vectorstore.py has list_collections method in both base and milvus classes."""

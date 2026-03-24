@@ -244,7 +244,7 @@ class Settings(BaseSettings):
     # === AI Agent ({{ cookiecutter.ai_framework }}, {{ cookiecutter.llm_provider }}) ===
 {%- if cookiecutter.use_openai %}
     OPENAI_API_KEY: str = ""
-    AI_MODEL: str = "gpt-4.1-mini"
+    AI_MODEL: str = "gpt-5-mini"
 {%- endif %}
 {%- if cookiecutter.use_anthropic %}
     ANTHROPIC_API_KEY: str = ""
@@ -261,11 +261,20 @@ class Settings(BaseSettings):
     AI_TEMPERATURE: float = 0.7
 {%- if cookiecutter.use_openai %}
     AI_AVAILABLE_MODELS: list[str] = [
+        "gpt-5.4",
+        "gpt-5.4-mini",
+        "gpt-5.4-nano",
+        "gpt-5-mini",
+        "gpt-5-nano",
+        "gpt-5",
+        "gpt-5.1",
+        "gpt-5.2",
+        "o4-mini",
+        "o3",
+        "o3-mini",
         "gpt-4.1-mini",
         "gpt-4.1",
         "gpt-4.1-nano",
-        "o4-mini",
-        "o3",
         "gpt-4o",
         "gpt-4o-mini",
     ]
@@ -287,7 +296,7 @@ class Settings(BaseSettings):
 {%- if cookiecutter.use_openrouter %}
     AI_AVAILABLE_MODELS: list[str] = [
         "anthropic/claude-sonnet-4-6",
-        "openai/gpt-4.1-mini",
+        "openai/gpt-5-mini",
         "google/gemini-2.5-flash",
         "deepseek/deepseek-r1",
     ]
@@ -405,6 +414,7 @@ class Settings(BaseSettings):
 
 {%- if cookiecutter.enable_rag_image_description %}
     # Image Description (LLM vision)
+    RAG_ENABLE_IMAGE_DESCRIPTION: bool = True  # set to false to disable LLM image description
     RAG_IMAGE_DESCRIPTION_MODEL: str = ""  # empty = use AI_MODEL
 {%- endif %}
 
@@ -476,6 +486,7 @@ class Settings(BaseSettings):
             document_parser=DocumentParser(),
             pdf_parser=pdf_parser,
 {%- if cookiecutter.enable_rag_image_description %}
+            enable_image_description=self.RAG_ENABLE_IMAGE_DESCRIPTION,
             image_description_model=self.RAG_IMAGE_DESCRIPTION_MODEL,
 {%- endif %}
         )

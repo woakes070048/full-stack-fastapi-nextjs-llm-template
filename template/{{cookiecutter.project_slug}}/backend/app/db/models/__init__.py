@@ -20,6 +20,8 @@ from app.db.models.webhook import Webhook, WebhookDelivery
 {%- endif %}
 {%- set _ = models.append("ChatFile") %}
 from app.db.models.chat_file import ChatFile
+{%- set _ = models.append("MessageRating") %}
+from app.db.models.message_rating import MessageRating
 {%- if cookiecutter.enable_rag %}
 {%- set _ = models.append("RAGDocument") %}
 from app.db.models.rag_document import RAGDocument

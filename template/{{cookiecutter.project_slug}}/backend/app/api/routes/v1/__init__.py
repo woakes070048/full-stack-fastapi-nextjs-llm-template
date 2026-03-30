@@ -7,7 +7,7 @@ from fastapi import APIRouter
 
 from app.api.routes.v1 import health
 {%- if cookiecutter.use_jwt %}
-from app.api.routes.v1 import auth, users
+from app.api.routes.v1 import admin_ratings, auth, users
 {%- endif %}
 {%- if cookiecutter.enable_oauth %}
 from app.api.routes.v1 import oauth
@@ -41,6 +41,9 @@ v1_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 
 # User routes
 v1_router.include_router(users.router, prefix="/users", tags=["users"])
+
+# Admin routes
+v1_router.include_router(admin_ratings.router, prefix="/admin/ratings", tags=["admin:ratings"])
 {%- endif %}
 
 {%- if cookiecutter.enable_oauth %}

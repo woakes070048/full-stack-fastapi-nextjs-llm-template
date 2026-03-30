@@ -5,6 +5,10 @@ import type { ChatMessage } from "@/types";
 import { ToolCallCard } from "./tool-call-card";
 import { MarkdownContent } from "./markdown-content";
 import { CopyButton } from "./copy-button";
+{%- if cookiecutter.use_jwt %}
+import { RatingButtons } from "./rating-buttons";
+import { useChatStore } from "@/stores";
+{%- endif %}
 import { User, Bot } from "lucide-react";
 import Image from "next/image";
 import { useAuthStore } from "@/stores";
@@ -17,6 +21,9 @@ interface MessageItemProps {
 
 export function MessageItem({ message, groupPosition }: MessageItemProps) {
   const isUser = message.role === "user";
+{%- if cookiecutter.use_jwt %}
+  const updateMessage = useChatStore((state) => state.updateMessage);
+{%- endif %}
   const { user: authUser } = useAuthStore();
   const isGrouped = groupPosition && groupPosition !== "single";
 
@@ -128,7 +135,6 @@ export function MessageItem({ message, groupPosition }: MessageItemProps) {
           </div>
         )}
 
-        {/* Timestamp + Copy button — inline row */}
         {!message.isStreaming && message.content && (
           <div className={cn("flex items-center gap-2", isUser && "flex-row-reverse")}>
             {message.timestamp && (
@@ -143,6 +149,24 @@ export function MessageItem({ message, groupPosition }: MessageItemProps) {
                 isUser ? "bg-secondary hover:bg-secondary/80" : "bg-muted hover:bg-muted/80"
               )}
             />
+{%- if cookiecutter.use_jwt %}
+            {!isUser && (
+              <RatingButtons
+                messageId={message.id}
+                conversationId={message.conversationId}
+                currentRating={message.user_rating ?? null}
+                ratingCount={message.rating_count ?? undefined}
+                isAssistant={!isUser}
+                onRatingChange={(updatedData) => {
+                  updateMessage(message.id, (msg) => ({
+                    ...msg,
+                    user_rating: updatedData.rating,
+                    rating_count: updatedData.rating_count,
+                  }));
+                }}
+              />
+            )}
+{%- endif %}
           </div>
         )}
       </div>

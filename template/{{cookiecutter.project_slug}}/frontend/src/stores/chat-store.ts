@@ -12,6 +12,10 @@ interface ChatState {
     id: string,
     updater: (msg: ChatMessage) => ChatMessage
   ) => void;
+  updateMessagesWhere: (
+    predicate: (msg: ChatMessage) => boolean,
+    updater: (msg: ChatMessage) => ChatMessage
+  ) => void;
   addToolCall: (messageId: string, toolCall: ToolCall) => void;
   updateToolCall: (
     messageId: string,
@@ -34,6 +38,11 @@ export const useChatStore = create<ChatState>((set) => ({
   updateMessage: (id, updater) =>
     set((state) => ({
       messages: state.messages.map((msg) => (msg.id === id ? updater(msg) : msg)),
+    })),
+
+  updateMessagesWhere: (predicate, updater) =>
+    set((state) => ({
+      messages: state.messages.map((msg) => (predicate(msg) ? updater(msg) : msg)),
     })),
 
   addToolCall: (messageId, toolCall) =>

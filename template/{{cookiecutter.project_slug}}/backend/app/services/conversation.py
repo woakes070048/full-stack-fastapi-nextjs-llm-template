@@ -9,9 +9,14 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, case
 
 from app.core.exceptions import NotFoundError
 from app.db.models.conversation import Conversation, Message, ToolCall
+from app.db.models.user import User
+{%- if cookiecutter.use_jwt %}
+from app.db.models.message_rating import MessageRating
+{%- endif %}
 from app.repositories import conversation_repo
 from app.schemas.conversation import (
     ConversationCreate,
@@ -31,24 +36,78 @@ class ConversationService:
     # Export Methods
 
     async def export_all(self) -> list[dict[str, Any]]:
-        """Export all conversations with messages for admin download."""
+        """Export all conversations with messages and ratings for admin download."""
         import json
 
         items, _ = await self.list_conversations(skip=0, limit=10000, include_archived=True)
         export_data = []
+
+        # Collect all message IDs to fetch ratings in bulk
+        all_message_ids = []
+        conv_messages_map: dict[str, list[Message]] = {}
+
         for conv in items:
             messages, _ = await self.list_messages(conv.id, skip=0, limit=10000, include_tool_calls=True)
+            conv_messages_map[str(conv.id)] = messages
+            all_message_ids.extend([m.id for m in messages if m.id])
+
+{%- if cookiecutter.use_jwt %}
+        # Fetch all ratings for these messages
+        ratings_query = (
+            select(MessageRating, User)
+            .join(User, MessageRating.user_id == User.id)
+            .where(MessageRating.message_id.in_(all_message_ids))
+        )
+        ratings_result = await self.db.execute(ratings_query)
+        ratings = ratings_result.all()
+
+        # Map message_id to list of ratings
+        message_ratings_map: dict[str, list[dict[str, Any]]] = {}
+        for rating, user in ratings:
+            msg_id = str(rating.message_id)
+            if msg_id not in message_ratings_map:
+                message_ratings_map[msg_id] = []
+            message_ratings_map[msg_id].append({
+                "id": str(rating.id),
+                "user_id": str(rating.user_id),
+                "user_email": getattr(user, "email", None),
+                "user_name": getattr(user, "name", None),
+                "rating": rating.rating,
+                "comment": rating.comment,
+                "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+            })
+{%- endif %}
+
+        # Build export data with ratings
+        for conv in items:
+            messages = conv_messages_map.get(str(conv.id), [])
             export_data.append({
-                "id": str(conv.id), "title": conv.title,
+                "id": str(conv.id),
+{%- if cookiecutter.use_jwt %}
+                "user_id": str(conv.user_id) if conv.user_id else None,
+{%- endif %}
+                "title": conv.title,
                 "created_at": conv.created_at.isoformat() if conv.created_at else None,
                 "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
                 "is_archived": conv.is_archived,
-                "messages": [{"id": str(m.id), "role": m.role, "content": m.content,
+                "messages": [{
+                    "id": str(m.id),
+                    "role": m.role,
+                    "content": m.content,
                     "created_at": m.created_at.isoformat() if m.created_at else None,
-                    "tool_calls": [{"tool_name": tc.tool_name,
+                    "model_name": m.model_name,
+                    "tokens_used": m.tokens_used,
+                    "tool_calls": [{
+                        "tool_name": tc.tool_name,
                         "args": tc.args if isinstance(tc.args, dict) else json.loads(tc.args) if isinstance(tc.args, str) and tc.args.strip() else {},
-                        "result": tc.result, "status": tc.status}
+                        "result": tc.result,
+                        "status": tc.status
+                    }
                         for tc in (m.tool_calls or [])] if hasattr(m, "tool_calls") and m.tool_calls else [],
+{%- if cookiecutter.use_jwt %}
+                    "ratings": message_ratings_map.get(str(m.id), []),
+{%- endif %}
                 } for m in messages],
             })
         return export_data
@@ -240,11 +299,18 @@ class ConversationService:
         skip: int = 0,
         limit: int = 100,
         include_tool_calls: bool = False,
+{%- if cookiecutter.use_jwt %}
+        user_id: UUID | None = None,
+{%- endif %}
     ) -> tuple[list[Message], int]:
         """List messages in a conversation.
 
         Returns:
             Tuple of (messages, total_count).
+
+        When user_id is provided, messages will be enriched with:
+        - user_rating: The user's rating for the message (1, -1, or None)
+        - rating_count: Aggregate counts {likes: N, dislikes: N}
         """
         # Verify conversation exists
         await self.get_conversation(conversation_id)
@@ -256,6 +322,43 @@ class ConversationService:
             include_tool_calls=include_tool_calls,
         )
         total = await conversation_repo.count_messages(self.db, conversation_id)
+
+{%- if cookiecutter.use_jwt %}
+        # Enrich messages with rating data if user_id is provided
+        if user_id is not None and items:
+            # Get all message IDs
+            message_ids = [msg.id for msg in items]
+
+            # Fetch user ratings for these messages
+            user_ratings_query = select(MessageRating).where(
+                MessageRating.message_id.in_(message_ids),
+                MessageRating.user_id == user_id,
+            )
+            user_ratings_result = await self.db.execute(user_ratings_query)
+            user_ratings = {
+                rating.message_id: rating.rating
+                for rating in user_ratings_result.scalars().all()
+            }
+
+            # Fetch aggregate rating counts for these messages
+            rating_counts_query = select(
+                MessageRating.message_id,
+                func.sum(case((MessageRating.rating == 1, 1), else_=0)).label("likes"),
+                func.sum(case((MessageRating.rating == -1, 1), else_=0)).label("dislikes"),
+            ).where(MessageRating.message_id.in_(message_ids)).group_by(MessageRating.message_id)
+
+            rating_counts_result = await self.db.execute(rating_counts_query)
+            rating_counts = {
+                row.message_id: {"likes": row.likes or 0, "dislikes": row.dislikes or 0}
+                for row in rating_counts_result.all()
+            }
+
+            # Attach rating data to messages
+            for msg in items:
+                msg.user_rating = user_ratings.get(msg.id)  # type: ignore[attr-defined]
+                msg.rating_count = rating_counts.get(msg.id)  # type: ignore[attr-defined]
+{%- endif %}
+
         return items, total
 
     async def add_message(
@@ -379,9 +482,14 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select, func, case
 
 from app.core.exceptions import NotFoundError
 from app.db.models.conversation import Conversation, Message, ToolCall
+{%- if cookiecutter.use_jwt %}
+from app.db.models.message_rating import MessageRating
+from app.db.models.user import User
+{%- endif %}
 from app.repositories import conversation_repo
 from app.schemas.conversation import (
     ConversationCreate,
@@ -401,24 +509,77 @@ class ConversationService:
     # Export Methods
 
     def export_all(self) -> list[dict[str, Any]]:
-        """Export all conversations with messages for admin download."""
+        """Export all conversations with messages and ratings for admin download."""
         import json as _json
 
         items, _ = self.list_conversations(skip=0, limit=10000, include_archived=True)
         export_data = []
+
+        # Collect all message IDs to fetch ratings in bulk
+        all_message_ids = []
+        conv_messages_map: dict[str, list[Message]] = {}
+
         for conv in items:
             messages, _ = self.list_messages(conv.id, skip=0, limit=10000, include_tool_calls=True)
+            conv_messages_map[str(conv.id)] = messages
+            all_message_ids.extend([m.id for m in messages if m.id])
+
+{%- if cookiecutter.use_jwt %}
+        # Fetch all ratings for these messages
+        ratings_query = (
+            select(MessageRating, User)
+            .join(User, MessageRating.user_id == User.id)
+            .where(MessageRating.message_id.in_(all_message_ids))
+        )
+        ratings_result = self.db.execute(ratings_query).all()
+
+        # Map message_id to list of ratings
+        message_ratings_map: dict[str, list[dict[str, Any]]] = {}
+        for rating, user in ratings_result:
+            msg_id = str(rating.message_id)
+            if msg_id not in message_ratings_map:
+                message_ratings_map[msg_id] = []
+            message_ratings_map[msg_id].append({
+                "id": str(rating.id),
+                "user_id": str(rating.user_id),
+                "user_email": getattr(user, "email", None),
+                "user_name": getattr(user, "name", None),
+                "rating": rating.rating,
+                "comment": rating.comment,
+                "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+            })
+{%- endif %}
+
+        # Build export data with ratings
+        for conv in items:
+            messages = conv_messages_map.get(str(conv.id), [])
             export_data.append({
-                "id": str(conv.id), "title": conv.title,
+                "id": str(conv.id),
+{%- if cookiecutter.use_jwt %}
+                "user_id": str(conv.user_id) if conv.user_id else None,
+{%- endif %}
+                "title": conv.title,
                 "created_at": conv.created_at.isoformat() if conv.created_at else None,
                 "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
                 "is_archived": conv.is_archived,
-                "messages": [{"id": str(m.id), "role": m.role, "content": m.content,
+                "messages": [{
+                    "id": str(m.id),
+                    "role": m.role,
+                    "content": m.content,
                     "created_at": m.created_at.isoformat() if m.created_at else None,
-                    "tool_calls": [{"tool_name": tc.tool_name,
+                    "model_name": m.model_name,
+                    "tokens_used": m.tokens_used,
+                    "tool_calls": [{
+                        "tool_name": tc.tool_name,
                         "args": _json.loads(tc.args) if isinstance(tc.args, str) else tc.args,
-                        "result": tc.result, "status": tc.status}
+                        "result": tc.result,
+                        "status": tc.status
+                    }
                         for tc in (m.tool_calls or [])] if hasattr(m, "tool_calls") and m.tool_calls else [],
+{%- if cookiecutter.use_jwt %}
+                    "ratings": message_ratings_map.get(str(m.id), []),
+{%- endif %}
                 } for m in messages],
             })
         return export_data
@@ -606,11 +767,18 @@ class ConversationService:
         skip: int = 0,
         limit: int = 100,
         include_tool_calls: bool = False,
+{%- if cookiecutter.use_jwt %}
+        user_id: str | None = None,
+{%- endif %}
     ) -> tuple[list[Message], int]:
         """List messages in a conversation.
 
         Returns:
             Tuple of (messages, total_count).
+
+        When user_id is provided, messages will be enriched with:
+        - user_rating: The user's rating for the message (1, -1, or None)
+        - rating_count: Aggregate counts {likes: N, dislikes: N}
         """
         # Verify conversation exists
         self.get_conversation(conversation_id)
@@ -622,6 +790,43 @@ class ConversationService:
             include_tool_calls=include_tool_calls,
         )
         total = conversation_repo.count_messages(self.db, conversation_id)
+
+{%- if cookiecutter.use_jwt %}
+        # Enrich messages with rating data if user_id is provided
+        if user_id is not None and items:
+            # Get all message IDs
+            message_ids = [msg.id for msg in items]
+
+            # Fetch user ratings for these messages
+            user_ratings_query = select(MessageRating).where(
+                MessageRating.message_id.in_(message_ids),
+                MessageRating.user_id == user_id,
+            )
+            user_ratings_result = self.db.execute(user_ratings_query)
+            user_ratings = {
+                rating.message_id: rating.rating
+                for rating in user_ratings_result.scalars().all()
+            }
+
+            # Fetch aggregate rating counts for these messages
+            rating_counts_query = select(
+                MessageRating.message_id,
+                func.sum(case((MessageRating.rating == 1, 1), else_=0)).label("likes"),
+                func.sum(case((MessageRating.rating == -1, 1), else_=0)).label("dislikes"),
+            ).where(MessageRating.message_id.in_(message_ids)).group_by(MessageRating.message_id)
+
+            rating_counts_result = self.db.execute(rating_counts_query)
+            rating_counts = {
+                row.message_id: {"likes": row.likes or 0, "dislikes": row.dislikes or 0}
+                for row in rating_counts_result.all()
+            }
+
+            # Attach rating data to messages
+            for msg in items:
+                msg.user_rating = user_ratings.get(msg.id)  # type: ignore[attr-defined]
+                msg.rating_count = rating_counts.get(msg.id)  # type: ignore[attr-defined]
+{%- endif %}
+
         return items, total
 
     def add_message(
@@ -741,9 +946,13 @@ Contains business logic for conversation, message, and tool call operations.
 """
 
 from datetime import UTC, datetime
+from typing import Any
 
 from app.core.exceptions import NotFoundError
 from app.db.models.conversation import Conversation, Message, ToolCall
+{%- if cookiecutter.use_jwt %}
+from app.db.models.message_rating import MessageRating
+{%- endif %}
 from app.repositories import conversation_repo
 from app.schemas.conversation import (
     ConversationCreate,
@@ -937,11 +1146,18 @@ class ConversationService:
         skip: int = 0,
         limit: int = 100,
         include_tool_calls: bool = False,
+{%- if cookiecutter.use_jwt %}
+        user_id: str | None = None,
+{%- endif %}
     ) -> tuple[list[Message], int]:
         """List messages in a conversation.
 
         Returns:
             Tuple of (messages, total_count).
+
+        When user_id is provided, messages will be enriched with:
+        - user_rating: The user's rating for the message (1, -1, or None)
+        - rating_count: Aggregate counts {likes: N, dislikes: N}
         """
         # Verify conversation exists
         await self.get_conversation(conversation_id)
@@ -952,6 +1168,52 @@ class ConversationService:
             include_tool_calls=include_tool_calls,
         )
         total = await conversation_repo.count_messages(conversation_id)
+
+{%- if cookiecutter.use_jwt %}
+        # Enrich messages with rating data if user_id is provided
+        if user_id is not None and items:
+            # Get all message IDs
+            message_ids = [msg.id for msg in items]
+
+            # Fetch user ratings for these messages
+            user_ratings = await MessageRating.find({
+                "message_id": {"$in": message_ids},
+                "user_id": user_id,
+            }).to_list()
+
+            user_rating_map = {
+                rating.message_id: rating.rating
+                for rating in user_ratings
+            }
+
+            # Fetch aggregate rating counts for these messages
+            pipeline = [
+                {"$match": {"message_id": {"$in": message_ids}}},
+                {
+                    "$group": {
+                        "_id": "$message_id",
+                        "likes": {
+                            "$sum": {"$cond": [{"$eq": ["$rating", 1]}, 1, 0]}
+                        },
+                        "dislikes": {
+                            "$sum": {"$cond": [{"$eq": ["$rating", -1]}, 1, 0]}
+                        },
+                    }
+                },
+            ]
+
+            rating_counts = await MessageRating.aggregate(pipeline).to_list()
+            rating_count_map = {
+                doc["_id"]: {"likes": doc["likes"], "dislikes": doc["dislikes"]}
+                for doc in rating_counts
+            }
+
+            # Attach rating data to messages
+            for msg in items:
+                msg.user_rating = user_rating_map.get(msg.id)  # type: ignore[attr-defined]
+                msg.rating_count = rating_count_map.get(msg.id)  # type: ignore[attr-defined]
+{%- endif %}
+
         return items, total
 
     async def add_message(

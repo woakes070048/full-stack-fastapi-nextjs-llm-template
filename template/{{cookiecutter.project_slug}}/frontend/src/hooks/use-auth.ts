@@ -13,19 +13,36 @@ export function useAuth() {
   const { user, isAuthenticated, isLoading, setUser, setLoading, logout } =
     useAuthStore();
 
+  // Fetch access token from server-side proxy
+  const fetchAccessToken = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/token");
+      if (response.ok) {
+        const data = await response.json();
+        useAuthStore.getState().setAccessToken(data.access_token);
+      }
+    } catch {
+      // Token fetch failed - WebSocket may not work
+      useAuthStore.getState().setAccessToken(null);
+    }
+  }, []);
+
   // Check auth status on mount — always fetch fresh user data
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const userData = await apiClient.get<User>("/auth/me");
         setUser(userData);
+        // Fetch access token for WebSocket use
+        await fetchAccessToken();
       } catch {
         setUser(null);
+        useAuthStore.getState().setAccessToken(null);
       }
     };
 
     checkAuth();
-  }, [setUser]);
+  }, [setUser, fetchAccessToken]);
 
   const login = useCallback(
     async (credentials: LoginRequest) => {
@@ -36,6 +53,8 @@ export function useAuth() {
           credentials
         );
         setUser(response.user);
+        // Fetch access token for WebSocket use
+        await fetchAccessToken();
         router.push(response.user.role === "admin" ? ROUTES.DASHBOARD : ROUTES.CHAT);
         return response;
       } catch (error) {
@@ -44,7 +63,7 @@ export function useAuth() {
         setLoading(false);
       }
     },
-    [router, setUser, setLoading]
+    [router, setUser, setLoading, fetchAccessToken]
   );
 
   const register = useCallback(
@@ -76,6 +95,8 @@ export function useAuth() {
       // Re-fetch user after token refresh
       const userData = await apiClient.get<User>("/auth/me");
       setUser(userData);
+      // Fetch new access token for WebSocket
+      await fetchAccessToken();
       return true;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -84,7 +105,7 @@ export function useAuth() {
       }
       return false;
     }
-  }, [logout, router, setUser]);
+  }, [logout, router, setUser, fetchAccessToken]);
 
   return {
     user,

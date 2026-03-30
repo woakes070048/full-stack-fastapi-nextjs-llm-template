@@ -80,6 +80,9 @@ function AuthenticatedChatContainer() {
           role: msg.role,
           content: msg.content,
           timestamp: new Date(msg.created_at),
+{%- if cookiecutter.use_jwt %}
+          conversationId: msg.conversation_id,
+{%- endif %}
           toolCalls: msg.tool_calls?.map((tc) => ({
             id: tc.tool_call_id,
             name: tc.tool_name,
@@ -87,6 +90,10 @@ function AuthenticatedChatContainer() {
             result: tc.result,
             status: tc.status === "failed" ? "error" : tc.status,
           })),
+{%- if cookiecutter.use_jwt %}
+          user_rating: msg.user_rating ?? undefined,
+          rating_count: msg.rating_count ?? undefined,
+{%- endif %}
           fileIds: "files" in msg && Array.isArray((msg as unknown as { files?: unknown[] }).files)
             ? ((msg as unknown as { files: { id: string }[] }).files).map((f) => f.id)
             : undefined,

@@ -20,6 +20,10 @@ import {
   Activity,
   ExternalLink,
   BookOpen,
+{%- if cookiecutter.use_jwt %}
+  Star,
+  List,
+{%- endif %}
 } from "lucide-react";
 {%- if cookiecutter.enable_rag %}
 import { listCollections, getCollectionInfo } from "@/lib/rag-api";
@@ -230,6 +234,42 @@ export default function DashboardPage() {
           </a>
         </div>
       </div>
+
+{%- if cookiecutter.use_jwt %}
+      {/* Admin Actions */}
+      {user?.role === "admin" && (
+        <div>
+          <h2 className="mb-3 text-lg font-semibold">Admin Actions</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Link href={ROUTES.ADMIN_RATINGS}>
+              <Card className="cursor-pointer transition-colors hover:bg-accent">
+                <CardContent className="flex items-center gap-3 p-4">
+                  <Star className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Response Ratings</p>
+                    <p className="text-xs text-muted-foreground">View and manage ratings</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href={ROUTES.ADMIN_CONVERSATIONS}>
+              <Card className="cursor-pointer transition-colors hover:bg-accent">
+                <CardContent className="flex items-center gap-3 p-4">
+                  <List className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">All Conversations</p>
+                    <p className="text-xs text-muted-foreground">View all user conversations</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+        </div>
+      )}
+{%- endif %}
     </div>
   );
 }

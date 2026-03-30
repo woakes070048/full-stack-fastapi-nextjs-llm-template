@@ -169,6 +169,11 @@ async def agent_websocket(
     if not await verify_api_key(api_key):
         await websocket.close(code=4001, reason="Invalid API key")
         return
+{%- elif cookiecutter.websocket_auth_jwt %}
+    # JWT auth is handled by get_current_user_ws dependency
+    # If auth failed, WebSocket was already closed and user is None
+    if user is None:
+        return
 {%- endif %}
 
     await manager.connect(websocket)
@@ -507,6 +512,7 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id)
                             # Save tool calls
                             from datetime import datetime, UTC
                             import json
@@ -536,6 +542,7 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id)
                             # Save tool calls
                             from datetime import datetime, UTC
                             import json
@@ -560,9 +567,10 @@ async def agent_websocket(
 {%- elif cookiecutter.use_mongodb %}
 
                 # Save assistant response to database
+                assistant_msg_id = None
                 if current_conversation_id and agent_run.result:
                     try:
-                        await conv_service.add_message(
+                        assistant_msg = await conv_service.add_message(
                             current_conversation_id,
                             MessageCreate(
                                 role="assistant",
@@ -570,8 +578,18 @@ async def agent_websocket(
                                 model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                             ),
                         )
+                        assistant_msg_id = str(assistant_msg.id) if assistant_msg else None
                     except Exception as e:
                         logger.warning(f"Failed to persist assistant response: {e}")
+{%- endif %}
+
+                # Notify frontend that assistant message was saved with real database ID
+{%- if cookiecutter.use_database %}
+                if assistant_msg_id:
+                    await manager.send_event(websocket, "message_saved", {
+                        "message_id": assistant_msg_id,
+                        "conversation_id": current_conversation_id,
+                    })
 {%- endif %}
 
                 await manager.send_event(websocket, "complete", {
@@ -746,6 +764,11 @@ async def agent_websocket(
     # Verify API key before accepting connection
     if not await verify_api_key(api_key):
         await websocket.close(code=4001, reason="Invalid API key")
+        return
+{%- elif cookiecutter.websocket_auth_jwt %}
+    # JWT auth is handled by get_current_user_ws dependency
+    # If auth failed, WebSocket was already closed and user is None
+    if user is None:
         return
 {%- endif %}
 
@@ -999,12 +1022,13 @@ async def agent_websocket(
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 
                 # Save assistant response to database
+                assistant_msg_id = None
                 if current_conversation_id and final_output:
                     try:
 {%- if cookiecutter.use_postgresql %}
                         async with get_db_context() as db:
                             conv_service = get_conversation_service(db)
-                            await conv_service.add_message(
+                            assistant_msg = await conv_service.add_message(
                                 UUID(current_conversation_id),
                                 MessageCreate(
                                     role="assistant",
@@ -1012,10 +1036,11 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id)
 {%- else %}
                         with contextmanager(get_db_session)() as db:
                             conv_service = get_conversation_service(db)
-                            conv_service.add_message(
+                            assistant_msg = conv_service.add_message(
                                 current_conversation_id,
                                 MessageCreate(
                                     role="assistant",
@@ -1023,15 +1048,17 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id)
 {%- endif %}
                     except Exception as e:
                         logger.warning(f"Failed to persist assistant response: {e}")
 {%- elif cookiecutter.use_mongodb %}
 
                 # Save assistant response to database
+                assistant_msg_id = None
                 if current_conversation_id and final_output:
                     try:
-                        await conv_service.add_message(
+                        assistant_msg = await conv_service.add_message(
                             current_conversation_id,
                             MessageCreate(
                                 role="assistant",
@@ -1039,8 +1066,18 @@ async def agent_websocket(
                                 model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                             ),
                         )
+                        assistant_msg_id = str(assistant_msg.id) if assistant_msg else None
                     except Exception as e:
                         logger.warning(f"Failed to persist assistant response: {e}")
+{%- endif %}
+
+                # Notify frontend that assistant message was saved with real database ID
+{%- if cookiecutter.use_database %}
+                if assistant_msg_id:
+                    await manager.send_event(websocket, "message_saved", {
+                        "message_id": assistant_msg_id,
+                        "conversation_id": current_conversation_id,
+                    })
 {%- endif %}
 
                 await manager.send_event(websocket, "complete", {
@@ -1216,6 +1253,11 @@ async def agent_websocket(
     # Verify API key before accepting connection
     if not await verify_api_key(api_key):
         await websocket.close(code=4001, reason="Invalid API key")
+        return
+{%- elif cookiecutter.websocket_auth_jwt %}
+    # JWT auth is handled by get_current_user_ws dependency
+    # If auth failed, WebSocket was already closed and user is None
+    if user is None:
         return
 {%- endif %}
 
@@ -1472,12 +1514,13 @@ async def agent_websocket(
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 
                 # Save assistant response to database
+                assistant_msg_id = None
                 if current_conversation_id and final_output:
                     try:
 {%- if cookiecutter.use_postgresql %}
                         async with get_db_context() as db:
                             conv_service = get_conversation_service(db)
-                            await conv_service.add_message(
+                            assistant_msg = await conv_service.add_message(
                                 UUID(current_conversation_id),
                                 MessageCreate(
                                     role="assistant",
@@ -1485,10 +1528,11 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id)
 {%- else %}
                         with contextmanager(get_db_session)() as db:
                             conv_service = get_conversation_service(db)
-                            conv_service.add_message(
+                            assistant_msg = conv_service.add_message(
                                 current_conversation_id,
                                 MessageCreate(
                                     role="assistant",
@@ -1496,15 +1540,17 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id)
 {%- endif %}
                     except Exception as e:
                         logger.warning(f"Failed to persist assistant response: {e}")
 {%- elif cookiecutter.use_mongodb %}
 
                 # Save assistant response to database
+                assistant_msg_id = None
                 if current_conversation_id and final_output:
                     try:
-                        await conv_service.add_message(
+                        assistant_msg = await conv_service.add_message(
                             current_conversation_id,
                             MessageCreate(
                                 role="assistant",
@@ -1512,8 +1558,18 @@ async def agent_websocket(
                                 model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                             ),
                         )
+                        assistant_msg_id = str(assistant_msg.id) if assistant_msg else None
                     except Exception as e:
                         logger.warning(f"Failed to persist assistant response: {e}")
+{%- endif %}
+
+                # Notify frontend that assistant message was saved with real database ID
+{%- if cookiecutter.use_database %}
+                if assistant_msg_id:
+                    await manager.send_event(websocket, "message_saved", {
+                        "message_id": assistant_msg_id,
+                        "conversation_id": current_conversation_id,
+                    })
 {%- endif %}
 
                 await manager.send_event(websocket, "complete", {
@@ -1670,6 +1726,11 @@ async def agent_websocket(
     # Verify API key before accepting connection
     if not await verify_api_key(api_key):
         await websocket.close(code=4001, reason="Invalid API key")
+        return
+{%- elif cookiecutter.websocket_auth_jwt %}
+    # JWT auth is handled by get_current_user_ws dependency
+    # If auth failed, WebSocket was already closed and user is None
+    if user is None:
         return
 {%- endif %}
 
@@ -2201,6 +2262,11 @@ async def agent_websocket(
     if not await verify_api_key(api_key):
         await websocket.close(code=4001, reason="Invalid API key")
         return
+{%- elif cookiecutter.websocket_auth_jwt %}
+    # JWT auth is handled by get_current_user_ws dependency
+    # If auth failed, WebSocket was already closed and user is None
+    if user is None:
+        return
 {%- endif %}
 
     await manager.connect(websocket)
@@ -2564,12 +2630,13 @@ async def agent_websocket(
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 
                     # Save assistant response to database
+                    assistant_msg_id = None
                     if current_conversation_id and final_output:
                         try:
 {%- if cookiecutter.use_postgresql %}
                             async with get_db_context() as db:
                                 conv_service = get_conversation_service(db)
-                                await conv_service.add_message(
+                                assistant_msg = await conv_service.add_message(
                                     UUID(current_conversation_id),
                                     MessageCreate(
                                         role="assistant",
@@ -2577,10 +2644,11 @@ async def agent_websocket(
                                         model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                     ),
                                 )
+                                assistant_msg_id = str(assistant_msg.id)
 {%- else %}
                             with contextmanager(get_db_session)() as db:
                                 conv_service = get_conversation_service(db)
-                                conv_service.add_message(
+                                assistant_msg = conv_service.add_message(
                                     current_conversation_id,
                                     MessageCreate(
                                         role="assistant",
@@ -2588,15 +2656,17 @@ async def agent_websocket(
                                         model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                     ),
                                 )
+                                assistant_msg_id = str(assistant_msg.id)
 {%- endif %}
                         except Exception as e:
                             logger.warning(f"Failed to persist assistant response: {e}")
 {%- elif cookiecutter.use_mongodb %}
 
                     # Save assistant response to database
+                    assistant_msg_id = None
                     if current_conversation_id and final_output:
                         try:
-                            await conv_service.add_message(
+                            assistant_msg = await conv_service.add_message(
                                 current_conversation_id,
                                 MessageCreate(
                                     role="assistant",
@@ -2604,8 +2674,18 @@ async def agent_websocket(
                                     model_name=assistant.model_name if hasattr(assistant, "model_name") else None,
                                 ),
                             )
+                            assistant_msg_id = str(assistant_msg.id) if assistant_msg else None
                         except Exception as e:
                             logger.warning(f"Failed to persist assistant response: {e}")
+{%- endif %}
+
+                    # Notify frontend that assistant message was saved with real database ID
+{%- if cookiecutter.use_database %}
+                    if assistant_msg_id:
+                        await manager.send_event(websocket, "message_saved", {
+                            "message_id": assistant_msg_id,
+                            "conversation_id": current_conversation_id,
+                        })
 {%- endif %}
 
                     await manager.send_event(websocket, "complete", {

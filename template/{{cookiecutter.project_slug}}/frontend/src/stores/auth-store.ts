@@ -8,9 +8,11 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  accessToken: string | null;
 
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
+  setAccessToken: (token: string | null) => void;
   checkAuth: () => Promise<void>;
   logout: () => void;
 }
@@ -21,6 +23,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: true,
+      accessToken: null,
 
       setUser: (user) =>
         set({
@@ -30,6 +33,8 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       setLoading: (loading) => set({ isLoading: loading }),
+
+      setAccessToken: (token) => set({ accessToken: token }),
 
       checkAuth: async () => {
         try {
@@ -51,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
           isLoading: false,
+          accessToken: null,
         }),
     }),
     {
@@ -58,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        // Note: accessToken is intentionally NOT persisted - kept in-memory only
       }),
     }
   )

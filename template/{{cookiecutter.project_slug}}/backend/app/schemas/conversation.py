@@ -120,6 +120,16 @@ class MessageRead(MessageBase, TimestampSchema):
     tokens_used: int | None = None
     tool_calls: list[ToolCallRead] = Field(default_factory=list)
     files: list[MessageFileRead] = Field(default_factory=list)
+{%- if cookiecutter.use_jwt %}
+    user_rating: int | None = Field(
+        default=None,
+        description="Current user's rating (1 or -1)",
+    )
+    rating_count: dict[str, int] | None = Field(
+        default=None,
+        description="Aggregate counts {likes: N, dislikes: N}",
+    )
+{%- endif %}
 
 
 class MessageReadSimple(MessageBase, TimestampSchema):

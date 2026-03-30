@@ -4,6 +4,16 @@
 
 export type MessageRole = "user" | "assistant" | "system";
 
+{%- if cookiecutter.use_jwt %}
+/** Rating values for message feedback. */
+export enum RatingValue {
+  LIKE = 1,
+  DISLIKE = -1,
+}
+
+export type UserRating = RatingValue.LIKE | RatingValue.DISLIKE | null;
+{%- endif %}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -15,6 +25,14 @@ export interface ChatMessage {
   groupId?: string;
   /** IDs of attached files (images, documents) */
   fileIds?: string[];
+{%- if cookiecutter.use_jwt %}
+  /** Conversation ID for this message */
+  conversationId: string;
+  /** Current user's rating */
+  user_rating?: UserRating;
+  /** Aggregate rating counts */
+  rating_count?: { likes: number; dislikes: number } | null;
+{%- endif %}
 }
 
 export interface ToolCall {

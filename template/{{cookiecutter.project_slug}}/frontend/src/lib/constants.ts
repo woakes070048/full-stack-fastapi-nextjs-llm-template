@@ -36,6 +36,10 @@ export const ROUTES = {
 {%- if cookiecutter.enable_rag %}
   RAG: "/rag",
 {%- endif %}
+{%- if cookiecutter.use_jwt %}
+  ADMIN_RATINGS: "/admin/ratings",
+  ADMIN_CONVERSATIONS: "/admin/conversations",
+{%- endif %}
 } as const;
 
 // WebSocket URL (for chat - direct to backend, use wss:// in production)

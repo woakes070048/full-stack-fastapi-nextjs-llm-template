@@ -1,14 +1,13 @@
 {%- if cookiecutter.use_jwt %}
 import { NextRequest, NextResponse } from "next/server";
 import { backendFetch, BackendApiError } from "@/lib/server-api";
+import { requireAdmin } from "@/lib/admin-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const accessToken = request.cookies.get("access_token")?.value;
-
-    if (!accessToken) {
-      return NextResponse.json({ detail: "Not authenticated" }, { status: 401 });
-    }
+    const adminCheck = await requireAdmin(request);
+    if ("error" in adminCheck) return adminCheck.error;
+    const { accessToken } = adminCheck;
 
     const data = await backendFetch("/api/v1/conversations/export", {
       headers: {

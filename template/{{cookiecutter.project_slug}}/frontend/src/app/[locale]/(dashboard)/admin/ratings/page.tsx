@@ -195,7 +195,7 @@ export default function AdminRatingsPage() {
       <div className="flex items-center gap-4 mb-4">
         <select
           value={filter}
-          onChange={(e) => setFilter(e.target.value as any)}
+          onChange={(e) => setFilter(e.target.value as RatingFilter)}
           className="px-3 py-2 rounded-md border bg-background"
         >
           <option value="all">All Ratings</option>

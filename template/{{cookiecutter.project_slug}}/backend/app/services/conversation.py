@@ -53,30 +53,31 @@ class ConversationService:
 
 {%- if cookiecutter.use_jwt %}
         # Fetch all ratings for these messages
-        ratings_query = (
-            select(MessageRating, User)
-            .join(User, MessageRating.user_id == User.id)
-            .where(MessageRating.message_id.in_(all_message_ids))
-        )
-        ratings_result = await self.db.execute(ratings_query)
-        ratings = ratings_result.all()
-
-        # Map message_id to list of ratings
         message_ratings_map: dict[str, list[dict[str, Any]]] = {}
-        for rating, user in ratings:
-            msg_id = str(rating.message_id)
-            if msg_id not in message_ratings_map:
-                message_ratings_map[msg_id] = []
-            message_ratings_map[msg_id].append({
-                "id": str(rating.id),
-                "user_id": str(rating.user_id),
-                "user_email": getattr(user, "email", None),
-                "user_name": getattr(user, "name", None),
-                "rating": rating.rating,
-                "comment": rating.comment,
-                "created_at": rating.created_at.isoformat() if rating.created_at else None,
-                "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
-            })
+        if all_message_ids:
+            ratings_query = (
+                select(MessageRating, User)
+                .join(User, MessageRating.user_id == User.id)
+                .where(MessageRating.message_id.in_(all_message_ids))
+            )
+            ratings_result = await self.db.execute(ratings_query)
+            ratings = ratings_result.all()
+
+            # Map message_id to list of ratings
+            for rating, user in ratings:
+                msg_id = str(rating.message_id)
+                if msg_id not in message_ratings_map:
+                    message_ratings_map[msg_id] = []
+                message_ratings_map[msg_id].append({
+                    "id": str(rating.id),
+                    "user_id": str(rating.user_id),
+                    "user_email": getattr(user, "email", None),
+                    "user_name": getattr(user, "name", None),
+                    "rating": rating.rating,
+                    "comment": rating.comment,
+                    "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                    "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+                })
 {%- endif %}
 
         # Build export data with ratings
@@ -526,29 +527,30 @@ class ConversationService:
 
 {%- if cookiecutter.use_jwt %}
         # Fetch all ratings for these messages
-        ratings_query = (
-            select(MessageRating, User)
-            .join(User, MessageRating.user_id == User.id)
-            .where(MessageRating.message_id.in_(all_message_ids))
-        )
-        ratings_result = self.db.execute(ratings_query).all()
-
-        # Map message_id to list of ratings
         message_ratings_map: dict[str, list[dict[str, Any]]] = {}
-        for rating, user in ratings_result:
-            msg_id = str(rating.message_id)
-            if msg_id not in message_ratings_map:
-                message_ratings_map[msg_id] = []
-            message_ratings_map[msg_id].append({
-                "id": str(rating.id),
-                "user_id": str(rating.user_id),
-                "user_email": getattr(user, "email", None),
-                "user_name": getattr(user, "name", None),
-                "rating": rating.rating,
-                "comment": rating.comment,
-                "created_at": rating.created_at.isoformat() if rating.created_at else None,
-                "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
-            })
+        if all_message_ids:
+            ratings_query = (
+                select(MessageRating, User)
+                .join(User, MessageRating.user_id == User.id)
+                .where(MessageRating.message_id.in_(all_message_ids))
+            )
+            ratings_result = self.db.execute(ratings_query).all()
+
+            # Map message_id to list of ratings
+            for rating, user in ratings_result:
+                msg_id = str(rating.message_id)
+                if msg_id not in message_ratings_map:
+                    message_ratings_map[msg_id] = []
+                message_ratings_map[msg_id].append({
+                    "id": str(rating.id),
+                    "user_id": str(rating.user_id),
+                    "user_email": getattr(user, "email", None),
+                    "user_name": getattr(user, "name", None),
+                    "rating": rating.rating,
+                    "comment": rating.comment,
+                    "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                    "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+                })
 {%- endif %}
 
         # Build export data with ratings

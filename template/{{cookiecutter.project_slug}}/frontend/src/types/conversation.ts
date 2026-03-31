@@ -2,7 +2,9 @@
 /**
  * Conversation types for AI chat persistence.
  */
+{%- if cookiecutter.use_jwt %}
 import { RatingValue, type UserRating } from "./chat";
+{%- endif %}
 
 export interface Conversation {
   id: string;

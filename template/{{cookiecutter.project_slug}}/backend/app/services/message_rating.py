@@ -2,7 +2,6 @@
 
 {%- if cookiecutter.use_postgresql %}
 from collections.abc import AsyncGenerator
-from typing import Any
 
 from uuid import UUID
 
@@ -201,7 +200,7 @@ class MessageRatingService:
                     comment=item.comment,
                     created_at=item.created_at,
                     updated_at=item.updated_at,
-                    message_content=item.message.content[:200] if item.message else None,
+                    message_content=(item.message.content or "")[:200] if item.message else None,
                     message_role=item.message.role if item.message else None,
                     conversation_id=item.message.conversation_id if item.message else None,
 {%- if cookiecutter.use_jwt %}
@@ -250,7 +249,7 @@ class MessageRatingService:
                     comment=item.comment,
                     created_at=item.created_at,
                     updated_at=item.updated_at,
-                    message_content=item.message.content[:200] if item.message else None,
+                    message_content=(item.message.content or "")[:200] if item.message else None,
                     message_role=item.message.role if item.message else None,
                     conversation_id=item.message.conversation_id if item.message else None,
 {%- if cookiecutter.use_jwt %}
@@ -278,7 +277,6 @@ class MessageRatingService:
 """Message rating service (SQLite sync)."""
 
 from collections.abc import Generator
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -475,7 +473,7 @@ class MessageRatingService:
                     comment=item.comment,
                     created_at=item.created_at,
                     updated_at=item.updated_at,
-                    message_content=item.message.content[:200] if item.message else None,
+                    message_content=(item.message.content or "")[:200] if item.message else None,
                     message_role=item.message.role if item.message else None,
                     conversation_id=item.message.conversation_id if item.message else None,
 {%- if cookiecutter.use_jwt %}
@@ -524,7 +522,7 @@ class MessageRatingService:
                     comment=item.comment,
                     created_at=item.created_at,
                     updated_at=item.updated_at,
-                    message_content=item.message.content[:200] if item.message else None,
+                    message_content=(item.message.content or "")[:200] if item.message else None,
                     message_role=item.message.role if item.message else None,
                     conversation_id=item.message.conversation_id if item.message else None,
 {%- if cookiecutter.use_jwt %}
@@ -552,7 +550,6 @@ class MessageRatingService:
 """Message rating service (MongoDB async)."""
 
 from collections.abc import AsyncGenerator
-from typing import Any
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.db.models.conversation import Message
@@ -721,10 +718,10 @@ class MessageRatingService:
         message_ids = [item.message_id for item in items]
         user_ids = [item.user_id for item in items if item.user_id]
 
-        # Fetch all messages in parallel
+        # Fetch all messages
         messages = {msg.id: msg for msg in await Message.find({"_id": {"$in": message_ids}}).to_list()}
 
-        # Fetch all users in parallel
+        # Fetch all users
         users = {user.id: user for user in await User.find({"_id": {"$in": user_ids}}).to_list()} if user_ids else {}
 {%- else %}
         message_ids = [item.message_id for item in items]
@@ -750,7 +747,7 @@ class MessageRatingService:
                     comment=item.comment,
                     created_at=item.created_at,
                     updated_at=item.updated_at,
-                    message_content=message.content[:200] if message else None,
+                    message_content=(message.content or "")[:200] if message else None,
                     message_role=message.role if message else None,
                     conversation_id=message.conversation_id if message else None,
                     user_email=user.email if user else None,
@@ -813,7 +810,7 @@ class MessageRatingService:
                         comment=item.comment,
                         created_at=item.created_at,
                         updated_at=item.updated_at,
-                        message_content=message.content[:200] if message else None,
+                        message_content=(message.content or "")[:200] if message else None,
                         message_role=message.role if message else None,
                         conversation_id=message.conversation_id if message else None,
 {%- if cookiecutter.use_jwt %}

@@ -397,7 +397,12 @@ def get_conversation(
 
     Raises 404 if the conversation does not exist.
     """
-    return conversation_service.get_conversation(conversation_id, include_messages=True)
+    return conversation_service.get_conversation(
+        conversation_id, include_messages=True,
+{%- if cookiecutter.use_jwt %}
+        user_id=str(current_user.id),
+{%- endif %}
+    )
 
 
 @router.patch("/{conversation_id}", response_model=ConversationRead)
@@ -416,7 +421,7 @@ def update_conversation(
     return conversation_service.update_conversation(
         conversation_id, data,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 
@@ -436,7 +441,7 @@ def delete_conversation(
     conversation_service.delete_conversation(
         conversation_id,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 
@@ -459,7 +464,7 @@ def archive_conversation(
     return conversation_service.archive_conversation(
         conversation_id,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 
@@ -649,7 +654,7 @@ async def get_conversation(
     return await conversation_service.get_conversation(
         conversation_id, include_messages=True,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 
@@ -670,7 +675,7 @@ async def update_conversation(
     return await conversation_service.update_conversation(
         conversation_id, data,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 
@@ -690,7 +695,7 @@ async def delete_conversation(
     await conversation_service.delete_conversation(
         conversation_id,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 
@@ -713,7 +718,7 @@ async def archive_conversation(
     return await conversation_service.archive_conversation(
         conversation_id,
 {%- if cookiecutter.use_jwt %}
-        user_id=current_user.id,
+        user_id=str(current_user.id),
 {%- endif %}
     )
 

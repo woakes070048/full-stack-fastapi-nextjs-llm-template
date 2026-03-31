@@ -18,7 +18,7 @@ export async function POST(
     const body = await request.json();
 
     const response = await fetch(
-      `${BACKEND_URL}/api/v1/conversations/${id}/messages/${messageId}/rate`,
+      `${BACKEND_URL}/api/v1/conversations/${encodeURIComponent(id)}/messages/${encodeURIComponent(messageId)}/rate`,
       {
         method: "POST",
         headers: {
@@ -63,7 +63,7 @@ export async function DELETE(
     }
 
     const response = await fetch(
-      `${BACKEND_URL}/api/v1/conversations/${id}/messages/${messageId}/rate`,
+      `${BACKEND_URL}/api/v1/conversations/${encodeURIComponent(id)}/messages/${encodeURIComponent(messageId)}/rate`,
       {
         method: "DELETE",
         headers: {

@@ -12,7 +12,7 @@ updates:
         patterns:
           - "pytest*"
           - "ruff"
-          - "mypy"
+          - "ty"
           - "pre-commit"
       core:
         patterns:

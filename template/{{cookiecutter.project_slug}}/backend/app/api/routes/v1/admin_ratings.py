@@ -10,13 +10,9 @@ The endpoints are:
 """
 
 {%- if cookiecutter.use_jwt %}
+from typing import Any
 {%- if cookiecutter.use_postgresql %}
-from typing import Any
 from uuid import UUID
-{%- elif cookiecutter.use_mongodb %}
-from typing import Any
-{%- else %}
-from typing import Any
 {%- endif %}
 
 import csv

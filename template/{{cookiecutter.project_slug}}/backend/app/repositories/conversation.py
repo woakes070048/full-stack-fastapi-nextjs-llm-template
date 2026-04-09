@@ -87,9 +87,10 @@ async def get_all_conversations_with_count(
     if not include_archived:
         query = query.where(Conversation.is_archived == False)  # noqa: E712
     if search:
+        safe_search = search.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
         query = query.where(
-            (Conversation.title.ilike(f"%{search}%"))
-            | Conversation.id.cast(String).ilike(f"{search}%")
+            (Conversation.title.ilike(f"%{safe_search}%", escape="\\"))
+            | Conversation.id.cast(String).ilike(f"{safe_search}%", escape="\\")
         )
 
     query = query.order_by(
@@ -103,9 +104,10 @@ async def get_all_conversations_with_count(
     if not include_archived:
         count_query = count_query.where(Conversation.is_archived == False)  # noqa: E712
     if search:
+        safe_search = search.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
         count_query = count_query.where(
-            (Conversation.title.ilike(f"%{search}%"))
-            | Conversation.id.cast(String).ilike(f"{search}%")
+            (Conversation.title.ilike(f"%{safe_search}%", escape="\\"))
+            | Conversation.id.cast(String).ilike(f"{safe_search}%", escape="\\")
         )
     total = (await db.execute(count_query)).scalar() or 0
 
@@ -424,9 +426,10 @@ def get_all_conversations_with_count(
     if not include_archived:
         query = query.where(Conversation.is_archived == False)  # noqa: E712
     if search:
+        safe_search = search.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
         query = query.where(
-            (Conversation.title.ilike(f"%{search}%"))
-            | Conversation.id.cast(String).ilike(f"{search}%")
+            (Conversation.title.ilike(f"%{safe_search}%", escape="\\"))
+            | Conversation.id.cast(String).ilike(f"{safe_search}%", escape="\\")
         )
 
     query = query.order_by(
@@ -440,9 +443,10 @@ def get_all_conversations_with_count(
     if not include_archived:
         count_query = count_query.where(Conversation.is_archived == False)  # noqa: E712
     if search:
+        safe_search = search.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_")
         count_query = count_query.where(
-            (Conversation.title.ilike(f"%{search}%"))
-            | Conversation.id.cast(String).ilike(f"{search}%")
+            (Conversation.title.ilike(f"%{safe_search}%", escape="\\"))
+            | Conversation.id.cast(String).ilike(f"{safe_search}%", escape="\\")
         )
     total = db.execute(count_query).scalar() or 0
 
@@ -696,6 +700,7 @@ Contains database operations for Conversation, Message, and ToolCall entities.
 """
 
 from datetime import UTC, datetime
+import re
 from typing import Any
 
 from app.db.models.conversation import Conversation, Message, ToolCall
@@ -756,10 +761,11 @@ async def get_all_conversations_with_count(
         match_filter["is_archived"] = False
     if search:
         # Add a string version of _id for prefix matching
+        safe_search = re.escape(search)
         pipeline.append({"$addFields": {"_id_str": {"$toString": "$_id"}}})
         match_filter["$or"] = [
-            {"title": {"$regex": search, "$options": "i"}},
-            {"_id_str": {"$regex": f"^{search}", "$options": "i"}},
+            {"title": {"$regex": safe_search, "$options": "i"}},
+            {"_id_str": {"$regex": f"^{safe_search}", "$options": "i"}},
         ]
     if match_filter:
         pipeline.append({"$match": match_filter})
@@ -792,10 +798,11 @@ async def get_all_conversations_with_count(
     if count_match:
         count_pipeline.append({"$match": count_match})
     if search:
+        safe_search = re.escape(search)
         count_pipeline.append({"$addFields": {"_id_str": {"$toString": "$_id"}}})
         count_pipeline.append({"$match": {"$or": [
-            {"title": {"$regex": search, "$options": "i"}},
-            {"_id_str": {"$regex": f"^{search}", "$options": "i"}},
+            {"title": {"$regex": safe_search, "$options": "i"}},
+            {"_id_str": {"$regex": f"^{safe_search}", "$options": "i"}},
         ]}})
     count_pipeline.append({"$count": "total"})
     count_result = await Conversation.aggregate(count_pipeline).to_list()

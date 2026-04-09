@@ -19,8 +19,15 @@ export async function GET(request: NextRequest) {
   // Restrict to same-origin requests to limit XSS exposure
   const origin = request.headers.get("origin");
   const host = request.headers.get("host");
-  if (origin && host && !origin.includes(host)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (origin && host) {
+    try {
+      const originUrl = new URL(origin);
+      if (originUrl.host !== host) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
   }
 
   const accessToken = request.cookies.get("access_token")?.value;

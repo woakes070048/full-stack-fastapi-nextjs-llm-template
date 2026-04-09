@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.db.models.conversation import Message
+from app.repositories import conversation as conversation_repo
 from app.repositories import message_rating as rating_repo
 from app.schemas.message_rating import (
     MessageRatingCreate,
@@ -59,6 +60,21 @@ class MessageRatingService:
                 details={"message_id": str(message_id), "conversation_id": str(conversation_id)},
             )
 
+    async def _validate_conversation_ownership(
+        self, conversation_id: UUID, user_id: UUID
+    ) -> None:
+        """Validate that the conversation belongs to the specified user.
+
+        Raises:
+            NotFoundError: If conversation doesn't exist or belongs to a different user
+        """
+        conv = await conversation_repo.get_conversation_by_id(self.db, conversation_id)
+        if not conv or conv.user_id != user_id:
+            raise NotFoundError(
+                message="Conversation not found",
+                details={"conversation_id": str(conversation_id)},
+            )
+
     async def rate_message(
         self,
         conversation_id: UUID,
@@ -82,6 +98,7 @@ class MessageRatingService:
             NotFoundError: If message doesn't exist or not in the specified conversation
         """
         # Validate message belongs to the specified conversation
+        await self._validate_conversation_ownership(conversation_id, user_id)
         await self._validate_message_in_conversation(message_id, conversation_id)
 
         message_role = await self._get_message_role(message_id)
@@ -144,6 +161,7 @@ class MessageRatingService:
             NotFoundError: If message doesn't exist, not in conversation, or no rating exists
         """
         # Validate message belongs to the specified conversation
+        await self._validate_conversation_ownership(conversation_id, user_id)
         await self._validate_message_in_conversation(message_id, conversation_id)
 
         rating = await rating_repo.get_rating_by_message_and_user(
@@ -284,6 +302,7 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import NotFoundError, ValidationError
 from app.db.models.conversation import Message
+from app.repositories import conversation as conversation_repo
 from app.repositories import message_rating as rating_repo
 from app.schemas.message_rating import (
     MessageRatingCreate,
@@ -332,6 +351,21 @@ class MessageRatingService:
                 details={"message_id": message_id, "conversation_id": conversation_id},
             )
 
+    def _validate_conversation_ownership(
+        self, conversation_id: str, user_id: str
+    ) -> None:
+        """Validate that the conversation belongs to the specified user.
+
+        Raises:
+            NotFoundError: If conversation doesn't exist or belongs to a different user
+        """
+        conv = conversation_repo.get_conversation_by_id(self.db, conversation_id)
+        if not conv or conv.user_id != user_id:
+            raise NotFoundError(
+                message="Conversation not found",
+                details={"conversation_id": conversation_id},
+            )
+
     def rate_message(
         self,
         conversation_id: str,
@@ -355,6 +389,7 @@ class MessageRatingService:
             NotFoundError: If message doesn't exist or not in the specified conversation
         """
         # Validate message belongs to the specified conversation
+        self._validate_conversation_ownership(conversation_id, user_id)
         self._validate_message_in_conversation(message_id, conversation_id)
 
         message_role = self._get_message_role(message_id)
@@ -417,6 +452,7 @@ class MessageRatingService:
             NotFoundError: If message doesn't exist, not in conversation, or no rating exists
         """
         # Validate message belongs to the specified conversation
+        self._validate_conversation_ownership(conversation_id, user_id)
         self._validate_message_in_conversation(message_id, conversation_id)
 
         rating = rating_repo.get_rating_by_message_and_user(
@@ -594,6 +630,23 @@ class MessageRatingService:
                 details={"message_id": message_id, "conversation_id": conversation_id},
             )
 
+    async def _validate_conversation_ownership(
+        self, conversation_id: str, user_id: str
+    ) -> None:
+        """Validate that the conversation belongs to the specified user.
+
+        Raises:
+            NotFoundError: If conversation doesn't exist or belongs to a different user
+        """
+        from app.db.models.conversation import Conversation
+
+        conv = await Conversation.get(conversation_id)
+        if not conv or conv.user_id != user_id:
+            raise NotFoundError(
+                message="Conversation not found",
+                details={"conversation_id": conversation_id},
+            )
+
     async def rate_message(
         self,
         conversation_id: str,
@@ -616,7 +669,8 @@ class MessageRatingService:
             ValidationError: If trying to rate a non-assistant message
             NotFoundError: If message doesn't exist or not in the specified conversation
         """
-        # Validate message belongs to the specified conversation
+        # Validate conversation ownership and message belongs to it
+        await self._validate_conversation_ownership(conversation_id, user_id)
         await self._validate_message_in_conversation(message_id, conversation_id)
 
         message_role = await self._get_message_role(message_id)
@@ -664,7 +718,8 @@ class MessageRatingService:
         Raises:
             NotFoundError: If message doesn't exist, not in conversation, or no rating exists
         """
-        # Validate message belongs to the specified conversation
+        # Validate conversation ownership and message belongs to it
+        await self._validate_conversation_ownership(conversation_id, user_id)
         await self._validate_message_in_conversation(message_id, conversation_id)
 
         rating = await rating_repo.get_rating_by_message_and_user(

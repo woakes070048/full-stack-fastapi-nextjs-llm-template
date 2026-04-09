@@ -102,13 +102,17 @@ export function useChat() {
               isTemporaryId: false,
             }));
           } else {
-            // Fallback: find the most recent assistant message with a temp ID
+            // Fallback: find the last assistant message with a temp ID
             // This handles cases where currentMessageId was already cleared
-            const { updateMessagesWhere } = useChatStore.getState();
-            updateMessagesWhere(
-              (msg) => msg.role === "assistant" && !!msg.isTemporaryId,
-              (msg) => ({ ...msg, id: message_id, isTemporaryId: false })
+            const messages = useChatStore.getState().messages;
+            const lastTemp = [...messages].reverse().find(
+              msg => msg.role === "assistant" && !!msg.isTemporaryId
             );
+            if (lastTemp) {
+              updateMessage(lastTemp.id, (msg) => ({
+                ...msg, id: message_id, isTemporaryId: false
+              }));
+            }
           }
           break;
         }

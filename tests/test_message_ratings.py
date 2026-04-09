@@ -533,6 +533,48 @@ class TestRatingFeatureSecurity:
         content = model_path.read_text()
         assert "UniqueConstraint" in content or "unique=True" in content
 
+    def test_conversation_ownership_validation(self, project_with_ratings: Path) -> None:
+        """Test that conversation ownership is checked before rating/removing (R4-4.3)."""
+        service_path = (
+            project_with_ratings / "backend" / "app" / "services" / "message_rating.py"
+        )
+        content = service_path.read_text()
+        assert "_validate_conversation_ownership" in content, (
+            "Ownership check should exist to prevent IDOR"
+        )
+        assert "conv.user_id != user_id" in content, (
+            "Should verify conversation belongs to user"
+        )
+
+    def test_search_input_sanitized_against_like_injection(self, project_with_ratings: Path) -> None:
+        """Test that LIKE wildcards are escaped in admin search (R4-4.1)."""
+        repo_path = (
+            project_with_ratings / "backend" / "app" / "repositories" / "conversation.py"
+        )
+        content = repo_path.read_text()
+        assert "safe_search" in content, "Search input should be sanitized before LIKE query"
+        assert "replace" in content, "LIKE wildcards should be escaped"
+        assert 'escape="' in content or "escape='" in content, (
+            "LIKE queries should declare an explicit ESCAPE character"
+        )
+
+    def test_search_input_sanitized_against_regex_injection_mongodb(self, tmp_path: Path) -> None:
+        """Test that regex input is escaped in MongoDB admin search (R4-4.2)."""
+        config = ProjectConfig(
+            project_name="test_mongodb_regex",
+            database=DatabaseType.MONGODB,
+            oauth_provider=OAuthProvider.NONE,
+            enable_pytest=True,
+            enable_docker=False,
+            enable_logfire=False,
+            background_tasks=BackgroundTaskType.NONE,
+            ci_type=CIType.NONE,
+        )
+        project = generate_project(config, tmp_path)
+        repo_path = project / "backend" / "app" / "repositories" / "conversation.py"
+        content = repo_path.read_text()
+        assert "re.escape" in content, "MongoDB search should escape regex input"
+
 
 class TestRatingFeatureAccessibility:
     """Tests for accessibility features in frontend components."""

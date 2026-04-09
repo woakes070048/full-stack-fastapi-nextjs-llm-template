@@ -39,82 +39,115 @@ class ConversationService:
 
     # Export Methods
 
+    EXPORT_CHUNK_SIZE = 1000
+    MESSAGE_EXPORT_LIMIT = 10000
+
     async def export_all(self) -> list[dict[str, Any]]:
-        """Export all conversations with messages and ratings for admin download."""
+        """Export all conversations with messages and ratings for admin download.
+
+        Uses keyset pagination on (created_at, id) to avoid skipping or
+        duplicating conversations when data changes during export.
+        """
         import json
 
-        items, _ = await self.list_conversations(skip=0, limit=10000, include_archived=True)
-        export_data = []
+        from sqlalchemy import tuple_
 
-        # Collect all message IDs to fetch ratings in bulk
-        all_message_ids = []
-        conv_messages_map: dict[str, list[Message]] = {}
+        export_data: list[dict[str, Any]] = []
+        last_created_at: datetime | None = None
+        last_id: UUID | None = None
 
-        for conv in items:
-            messages, _ = await self.list_messages(conv.id, skip=0, limit=10000, include_tool_calls=True)
-            conv_messages_map[str(conv.id)] = messages
-            all_message_ids.extend([m.id for m in messages if m.id])
+        while True:
+            query = select(Conversation).order_by(
+                Conversation.created_at.desc(), Conversation.id.desc()
+            ).limit(self.EXPORT_CHUNK_SIZE)
+
+            if last_created_at is not None and last_id is not None:
+                query = query.where(
+                    tuple_(Conversation.created_at, Conversation.id) < (last_created_at, last_id)
+                )
+
+            result = await self.db.execute(query)
+            items = list(result.scalars().all())
+            if not items:
+                break
+
+            # Collect all message IDs to fetch ratings in bulk
+            all_message_ids: list[UUID] = []
+            conv_messages_map: dict[str, list[Message]] = {}
+
+            for conv in items:
+                messages, _ = await self.list_messages(conv.id, skip=0, limit=self.MESSAGE_EXPORT_LIMIT, include_tool_calls=True)
+                conv_messages_map[str(conv.id)] = messages
+                all_message_ids.extend([m.id for m in messages if m.id])
 
 {%- if cookiecutter.use_jwt %}
-        # Fetch all ratings for these messages
-        message_ratings_map: dict[str, list[dict[str, Any]]] = {}
-        if all_message_ids:
-            ratings_query = (
-                select(MessageRating, User)
-                .join(User, MessageRating.user_id == User.id)
-                .where(MessageRating.message_id.in_(all_message_ids))
-            )
-            ratings_result = await self.db.execute(ratings_query)
-            ratings = ratings_result.all()
+            # Fetch ratings for this chunk of messages
+            message_ratings_map: dict[str, list[dict[str, Any]]] = {}
+            if all_message_ids:
+                ratings_query = (
+                    select(MessageRating, User)
+                    .join(User, MessageRating.user_id == User.id)
+                    .where(MessageRating.message_id.in_(all_message_ids))
+                )
+                ratings_result = await self.db.execute(ratings_query)
+                ratings = ratings_result.all()
 
-            # Map message_id to list of ratings
-            for rating, user in ratings:
-                msg_id = str(rating.message_id)
-                if msg_id not in message_ratings_map:
-                    message_ratings_map[msg_id] = []
-                message_ratings_map[msg_id].append({
-                    "id": str(rating.id),
-                    "user_id": str(rating.user_id),
-                    "user_email": getattr(user, "email", None),
-                    "user_name": user.full_name if user else None,
-                    "rating": rating.rating,
-                    "comment": rating.comment,
-                    "created_at": rating.created_at.isoformat() if rating.created_at else None,
-                    "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+                # Map message_id to list of ratings
+                for rating, user in ratings:
+                    msg_id = str(rating.message_id)
+                    if msg_id not in message_ratings_map:
+                        message_ratings_map[msg_id] = []
+                    message_ratings_map[msg_id].append({
+                        "id": str(rating.id),
+                        "user_id": str(rating.user_id),
+                        "user_email": getattr(user, "email", None),
+                        "user_name": user.full_name if user else None,
+                        "rating": rating.rating,
+                        "comment": rating.comment,
+                        "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                        "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+                    })
+{%- endif %}
+
+            # Build export data for this chunk
+            for conv in items:
+                messages = conv_messages_map.get(str(conv.id), [])
+                export_data.append({
+                    "id": str(conv.id),
+{%- if cookiecutter.use_jwt %}
+                    "user_id": str(conv.user_id) if conv.user_id else None,
+{%- endif %}
+                    "title": conv.title,
+                    "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                    "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+                    "is_archived": conv.is_archived,
+                    "messages": [{
+                        "id": str(m.id),
+                        "role": m.role,
+                        "content": m.content,
+                        "created_at": m.created_at.isoformat() if m.created_at else None,
+                        "model_name": m.model_name,
+                        "tokens_used": m.tokens_used,
+                        "tool_calls": [{
+                            "tool_name": tc.tool_name,
+                            "args": tc.args if isinstance(tc.args, dict) else json.loads(tc.args) if isinstance(tc.args, str) and tc.args.strip() else {},
+                            "result": tc.result,
+                            "status": tc.status
+                        }
+                            for tc in (m.tool_calls or [])] if hasattr(m, "tool_calls") and m.tool_calls else [],
+{%- if cookiecutter.use_jwt %}
+                        "ratings": message_ratings_map.get(str(m.id), []),
+{%- endif %}
+                    } for m in messages],
                 })
-{%- endif %}
 
-        # Build export data with ratings
-        for conv in items:
-            messages = conv_messages_map.get(str(conv.id), [])
-            export_data.append({
-                "id": str(conv.id),
-{%- if cookiecutter.use_jwt %}
-                "user_id": str(conv.user_id) if conv.user_id else None,
-{%- endif %}
-                "title": conv.title,
-                "created_at": conv.created_at.isoformat() if conv.created_at else None,
-                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
-                "is_archived": conv.is_archived,
-                "messages": [{
-                    "id": str(m.id),
-                    "role": m.role,
-                    "content": m.content,
-                    "created_at": m.created_at.isoformat() if m.created_at else None,
-                    "model_name": m.model_name,
-                    "tokens_used": m.tokens_used,
-                    "tool_calls": [{
-                        "tool_name": tc.tool_name,
-                        "args": tc.args if isinstance(tc.args, dict) else json.loads(tc.args) if isinstance(tc.args, str) and tc.args.strip() else {},
-                        "result": tc.result,
-                        "status": tc.status
-                    }
-                        for tc in (m.tool_calls or [])] if hasattr(m, "tool_calls") and m.tool_calls else [],
-{%- if cookiecutter.use_jwt %}
-                    "ratings": message_ratings_map.get(str(m.id), []),
-{%- endif %}
-                } for m in messages],
-            })
+            # Advance cursor for keyset pagination
+            last_created_at = items[-1].created_at
+            last_id = items[-1].id
+
+            if len(items) < self.EXPORT_CHUNK_SIZE:
+                break
+
         return export_data
 
     # Conversation Methods
@@ -552,81 +585,113 @@ class ConversationService:
 
     # Export Methods
 
+    EXPORT_CHUNK_SIZE = 1000
+    MESSAGE_EXPORT_LIMIT = 10000
+
     def export_all(self) -> list[dict[str, Any]]:
-        """Export all conversations with messages and ratings for admin download."""
+        """Export all conversations with messages and ratings for admin download.
+
+        Uses keyset pagination on (created_at, id) to avoid skipping or
+        duplicating conversations when data changes during export.
+        """
         import json as _json
 
-        items, _ = self.list_conversations(skip=0, limit=10000, include_archived=True)
-        export_data = []
+        from sqlalchemy import tuple_
 
-        # Collect all message IDs to fetch ratings in bulk
-        all_message_ids = []
-        conv_messages_map: dict[str, list[Message]] = {}
+        export_data: list[dict[str, Any]] = []
+        last_created_at: datetime | None = None
+        last_id: str | None = None
 
-        for conv in items:
-            messages, _ = self.list_messages(conv.id, skip=0, limit=10000, include_tool_calls=True)
-            conv_messages_map[str(conv.id)] = messages
-            all_message_ids.extend([m.id for m in messages if m.id])
+        while True:
+            query = select(Conversation).order_by(
+                Conversation.created_at.desc(), Conversation.id.desc()
+            ).limit(self.EXPORT_CHUNK_SIZE)
+
+            if last_created_at is not None and last_id is not None:
+                query = query.where(
+                    tuple_(Conversation.created_at, Conversation.id) < (last_created_at, last_id)
+                )
+
+            items = list(self.db.execute(query).scalars().all())
+            if not items:
+                break
+
+            # Collect all message IDs to fetch ratings in bulk
+            all_message_ids: list[str] = []
+            conv_messages_map: dict[str, list[Message]] = {}
+
+            for conv in items:
+                messages, _ = self.list_messages(conv.id, skip=0, limit=self.MESSAGE_EXPORT_LIMIT, include_tool_calls=True)
+                conv_messages_map[str(conv.id)] = messages
+                all_message_ids.extend([m.id for m in messages if m.id])
 
 {%- if cookiecutter.use_jwt %}
-        # Fetch all ratings for these messages
-        message_ratings_map: dict[str, list[dict[str, Any]]] = {}
-        if all_message_ids:
-            ratings_query = (
-                select(MessageRating, User)
-                .join(User, MessageRating.user_id == User.id)
-                .where(MessageRating.message_id.in_(all_message_ids))
-            )
-            ratings_result = self.db.execute(ratings_query).all()
+            # Fetch ratings for this chunk of messages
+            message_ratings_map: dict[str, list[dict[str, Any]]] = {}
+            if all_message_ids:
+                ratings_query = (
+                    select(MessageRating, User)
+                    .join(User, MessageRating.user_id == User.id)
+                    .where(MessageRating.message_id.in_(all_message_ids))
+                )
+                ratings_result = self.db.execute(ratings_query).all()
 
-            # Map message_id to list of ratings
-            for rating, user in ratings_result:
-                msg_id = str(rating.message_id)
-                if msg_id not in message_ratings_map:
-                    message_ratings_map[msg_id] = []
-                message_ratings_map[msg_id].append({
-                    "id": str(rating.id),
-                    "user_id": str(rating.user_id),
-                    "user_email": getattr(user, "email", None),
-                    "user_name": user.full_name if user else None,
-                    "rating": rating.rating,
-                    "comment": rating.comment,
-                    "created_at": rating.created_at.isoformat() if rating.created_at else None,
-                    "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+                # Map message_id to list of ratings
+                for rating, user in ratings_result:
+                    msg_id = str(rating.message_id)
+                    if msg_id not in message_ratings_map:
+                        message_ratings_map[msg_id] = []
+                    message_ratings_map[msg_id].append({
+                        "id": str(rating.id),
+                        "user_id": str(rating.user_id),
+                        "user_email": getattr(user, "email", None),
+                        "user_name": user.full_name if user else None,
+                        "rating": rating.rating,
+                        "comment": rating.comment,
+                        "created_at": rating.created_at.isoformat() if rating.created_at else None,
+                        "updated_at": rating.updated_at.isoformat() if rating.updated_at else None,
+                    })
+{%- endif %}
+
+            # Build export data for this chunk
+            for conv in items:
+                messages = conv_messages_map.get(str(conv.id), [])
+                export_data.append({
+                    "id": str(conv.id),
+{%- if cookiecutter.use_jwt %}
+                    "user_id": str(conv.user_id) if conv.user_id else None,
+{%- endif %}
+                    "title": conv.title,
+                    "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                    "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+                    "is_archived": conv.is_archived,
+                    "messages": [{
+                        "id": str(m.id),
+                        "role": m.role,
+                        "content": m.content,
+                        "created_at": m.created_at.isoformat() if m.created_at else None,
+                        "model_name": m.model_name,
+                        "tokens_used": m.tokens_used,
+                        "tool_calls": [{
+                            "tool_name": tc.tool_name,
+                            "args": _json.loads(tc.args) if isinstance(tc.args, str) else tc.args,
+                            "result": tc.result,
+                            "status": tc.status
+                        }
+                            for tc in (m.tool_calls or [])] if hasattr(m, "tool_calls") and m.tool_calls else [],
+{%- if cookiecutter.use_jwt %}
+                        "ratings": message_ratings_map.get(str(m.id), []),
+{%- endif %}
+                    } for m in messages],
                 })
-{%- endif %}
 
-        # Build export data with ratings
-        for conv in items:
-            messages = conv_messages_map.get(str(conv.id), [])
-            export_data.append({
-                "id": str(conv.id),
-{%- if cookiecutter.use_jwt %}
-                "user_id": str(conv.user_id) if conv.user_id else None,
-{%- endif %}
-                "title": conv.title,
-                "created_at": conv.created_at.isoformat() if conv.created_at else None,
-                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
-                "is_archived": conv.is_archived,
-                "messages": [{
-                    "id": str(m.id),
-                    "role": m.role,
-                    "content": m.content,
-                    "created_at": m.created_at.isoformat() if m.created_at else None,
-                    "model_name": m.model_name,
-                    "tokens_used": m.tokens_used,
-                    "tool_calls": [{
-                        "tool_name": tc.tool_name,
-                        "args": _json.loads(tc.args) if isinstance(tc.args, str) else tc.args,
-                        "result": tc.result,
-                        "status": tc.status
-                    }
-                        for tc in (m.tool_calls or [])] if hasattr(m, "tool_calls") and m.tool_calls else [],
-{%- if cookiecutter.use_jwt %}
-                    "ratings": message_ratings_map.get(str(m.id), []),
-{%- endif %}
-                } for m in messages],
-            })
+            # Advance cursor for keyset pagination
+            last_created_at = items[-1].created_at
+            last_id = items[-1].id
+
+            if len(items) < self.EXPORT_CHUNK_SIZE:
+                break
+
         return export_data
 
     # Conversation Methods

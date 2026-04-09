@@ -4,7 +4,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlmodel import Field, Relationship, SQLModel
 
@@ -88,7 +88,7 @@ class MessageRating(TimestampMixin, SQLModel, table=True):
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -308,7 +308,6 @@ class MessageRating(Base, TimestampMixin):
 
 {%- elif cookiecutter.use_mongodb %}
 from datetime import UTC, datetime
-from typing import Optional
 
 from beanie import Document, Link
 from pydantic import Field
@@ -338,9 +337,9 @@ class MessageRating(Document):
     user_id: str
 {%- endif %}
     rating: RatingValue
-    comment: Optional[str] = None
+    comment: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None
 
     class Settings:
         name = "message_ratings"

@@ -104,10 +104,10 @@ This page provides:
 
 ## Direct Conversation Links
 
-You can share a direct link to a specific conversation by adding the `c` parameter to the chat URL:
+You can share a direct link to a specific conversation by adding the `id` parameter to the chat URL:
 
 ```
-http://localhost:3000/chat?c=550e8400-e29b-41d4-a716-446655440000
+http://localhost:3000/chat?id=550e8400-e29b-41d4-a716-446655440000
 ```
 
 This is useful for:

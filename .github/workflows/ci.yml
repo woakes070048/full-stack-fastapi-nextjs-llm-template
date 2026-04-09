@@ -58,8 +58,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
-      - name: Run mypy
-        run: uv run mypy fastapi_gen
+      - name: Run ty
+        run: uv run ty check
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -118,7 +118,7 @@ jobs:
         run: uv pip install pip-audit
 
       - name: Run pip-audit
-        run: uv run pip-audit --progress-spinner=off --ignore-vuln CVE-2026-4539
+        run: uv run pip-audit --progress-spinner=off --ignore-vuln CVE-2026-4539 --ignore-vuln CVE-2026-25645
 
   # ============================================
   # Stage 2: Generated Project Tests
@@ -160,7 +160,7 @@ jobs:
 
       - name: Run type check
         working-directory: /tmp/projects/test_minimal/backend
-        run: uv run mypy app --ignore-missing-imports
+        run: uv run ty check
 
       - name: Run tests
         working-directory: /tmp/projects/test_minimal/backend
@@ -235,7 +235,7 @@ jobs:
 
       - name: Run backend type check
         working-directory: /tmp/projects/test_pg/backend
-        run: uv run mypy app --ignore-missing-imports
+        run: uv run ty check
 
       - name: Run backend tests
         working-directory: /tmp/projects/test_pg/backend

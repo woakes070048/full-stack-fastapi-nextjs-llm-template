@@ -2,7 +2,17 @@
 """Framework-agnostic agent invocation for channel messages (non-streaming)."""
 
 import logging
+from dataclasses import dataclass, field
 from typing import Any
+
+
+@dataclass
+class ToolEvent:
+    """A tool call + result pair collected during agent execution."""
+
+    tool_name: str
+    args: dict[str, Any] = field(default_factory=dict)
+    result: str = ""
 
 {%- if cookiecutter.use_postgresql %}
 from uuid import UUID
@@ -50,8 +60,12 @@ class AgentInvocationService:
 {%- endif %}
         system_prompt_override: str | None = None,
         model_override: str | None = None,
-    ) -> str:
-        """Run the agent and return final text. Persists both messages to DB."""
+    ) -> tuple[str, list[ToolEvent]]:
+        """Run the agent and return final text + tool events.
+
+        Returns:
+            Tuple of (response_text, tool_events).
+        """
         # 1. Persist user message
         await self._persist_user_message(conversation_id, user_message)
 
@@ -59,8 +73,9 @@ class AgentInvocationService:
         history = await self._load_history(conversation_id)
 
         # 3. Call agent
+        tool_events: list[ToolEvent] = []
         try:
-            response_text = await self._call_agent(
+            response_text, tool_events = await self._call_agent(
                 user_message=user_message,
                 history=history,
                 conversation_id=conversation_id,
@@ -76,11 +91,9 @@ class AgentInvocationService:
         # 4. Persist assistant message
         await self._persist_assistant_message(conversation_id, response_text)
 
-        return response_text
+        return response_text, tool_events
 
-    # -----------------------------------------------------------------------
     # Framework-specific agent calls
-    # -----------------------------------------------------------------------
 
     async def _call_agent(
         self,
@@ -88,7 +101,7 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[ToolEvent]]:
         """Dispatch to the framework-specific agent implementation."""
 {%- if cookiecutter.use_pydantic_ai %}
         return await self._call_pydantic_ai(user_message=user_message, history=history, **kwargs)
@@ -103,8 +116,7 @@ class AgentInvocationService:
 {%- elif cookiecutter.use_deepagents %}
         return await self._call_deepagents(user_message=user_message, history=history, **kwargs)
 {%- else %}
-        # Fallback: echo the message (no agent configured)
-        return f"Echo: {user_message}"
+        return f"Echo: {user_message}", []
 {%- endif %}
 
 {%- if cookiecutter.use_pydantic_ai %}
@@ -115,8 +127,8 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
-        """Invoke PydanticAI agent (non-streaming)."""
+    ) -> tuple[str, list[ToolEvent]]:
+        """Invoke PydanticAI agent and extract tool events from result messages."""
         from app.agents.assistant import Deps, get_agent
         from app.api.routes.v1.agent import build_message_history
 
@@ -131,7 +143,39 @@ class AgentInvocationService:
             message_history=model_history,
             deps=deps,
         )
-        return str(result.output)
+
+        tool_events = self._extract_tool_events(result.all_messages())
+        return str(result.output), tool_events
+
+    @staticmethod
+    def _extract_tool_events(messages: list[Any]) -> list[ToolEvent]:
+        """Extract tool call/result pairs from pydantic-ai message history."""
+        from pydantic_ai.messages import ModelRequest, ModelResponse
+
+        pending: dict[str, ToolEvent] = {}
+        events: list[ToolEvent] = []
+
+        for msg in messages:
+            if isinstance(msg, ModelResponse):
+                for part in msg.parts:
+                    tool_name = getattr(part, "tool_name", None)
+                    tool_call_id = getattr(part, "tool_call_id", None)
+                    if tool_name and tool_call_id:
+                        args = getattr(part, "args", None)
+                        te = ToolEvent(
+                            tool_name=tool_name,
+                            args=args if isinstance(args, dict) else {},
+                        )
+                        pending[tool_call_id] = te
+                        events.append(te)
+            elif isinstance(msg, ModelRequest):
+                for part in msg.parts:
+                    tool_call_id = getattr(part, "tool_call_id", None)
+                    content = getattr(part, "content", None)
+                    if tool_call_id and tool_call_id in pending and content:
+                        pending[tool_call_id].result = str(content)[:500]
+
+        return events
 {%- endif %}
 
 {%- if cookiecutter.use_pydantic_deep %}
@@ -142,7 +186,7 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[ToolEvent]]:
         """Invoke PydanticDeep agent (non-streaming).
 
         PydanticDeep manages its own conversation history via history_messages_path,
@@ -162,7 +206,7 @@ class AgentInvocationService:
         )
         context = PydanticDeepContext(user_id=user_id)
         text, _, _ = await assistant.run(user_message, context=context)
-        return text
+        return text, []
 {%- endif %}
 
 {%- if cookiecutter.use_langchain %}
@@ -173,7 +217,7 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[ToolEvent]]:
         """Invoke LangChain agent (async)."""
         from langchain_core.messages import AIMessage, HumanMessage
 
@@ -188,8 +232,8 @@ class AgentInvocationService:
         for msg in reversed(result.get("messages", [])):
             if isinstance(msg, AIMessage):
                 content = msg.content
-                return content if isinstance(content, str) else str(content)
-        return ""
+                return (content if isinstance(content, str) else str(content)), []
+        return "", []
 
     def _build_langchain_history(self, history: list[dict[str, str]]) -> list[Any]:
         """Convert conversation history to LangChain message format."""
@@ -216,7 +260,7 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[ToolEvent]]:
         """Invoke LangGraph agent (async)."""
         from langchain_core.messages import AIMessage, HumanMessage
 
@@ -231,8 +275,8 @@ class AgentInvocationService:
         for msg in reversed(result.get("messages", [])):
             if isinstance(msg, AIMessage):
                 content = msg.content
-                return content if isinstance(content, str) else str(content)
-        return ""
+                return (content if isinstance(content, str) else str(content)), []
+        return "", []
 
     def _build_langchain_history(self, history: list[dict[str, str]]) -> list[Any]:
         """Convert conversation history to LangChain message format."""
@@ -259,7 +303,7 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[ToolEvent]]:
         """Invoke CrewAI crew (synchronous, run in thread executor)."""
         import asyncio
 
@@ -271,7 +315,7 @@ class AgentInvocationService:
             None,
             lambda: assistant.crew.kickoff(inputs={"question": user_message}),
         )
-        return str(result)
+        return str(result), []
 {%- endif %}
 
 {%- if cookiecutter.use_deepagents %}
@@ -282,7 +326,7 @@ class AgentInvocationService:
         user_message: str,
         history: list[dict[str, str]],
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, list[ToolEvent]]:
         """Invoke DeepAgents graph (async)."""
         from langchain_core.messages import AIMessage, HumanMessage
 
@@ -297,8 +341,8 @@ class AgentInvocationService:
         for msg in reversed(result.get("messages", [])):
             if isinstance(msg, AIMessage):
                 content = msg.content
-                return content if isinstance(content, str) else str(content)
-        return ""
+                return (content if isinstance(content, str) else str(content)), []
+        return "", []
 
     def _build_langchain_history(self, history: list[dict[str, str]]) -> list[Any]:
         """Convert conversation history to LangChain/DeepAgents message format."""
@@ -317,9 +361,7 @@ class AgentInvocationService:
         return lc_msgs
 {%- endif %}
 
-    # -----------------------------------------------------------------------
     # Persistence helpers
-    # -----------------------------------------------------------------------
 
 {%- if cookiecutter.use_postgresql %}
     async def _persist_user_message(self, conversation_id: UUID, content: str) -> None:

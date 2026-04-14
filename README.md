@@ -19,12 +19,15 @@
 
 <p align="center">
   <a href="https://pypi.org/project/fastapi-fullstack/"><img src="https://img.shields.io/pypi/v/fastapi-fullstack?color=green&logo=pypi&logoColor=white" alt="PyPI"></a>
-  <a href="https://pepy.tech/projects/fastapi-fullstack"><img src="https://static.pepy.tech/badge/fastapi-fullstack" alt="PyPI Downloads"></a>
+  <a href="https://pepy.tech/projects/fastapi-fullstack"><img src="https://static.pepy.tech/badge/fastapi-fullstack/month" alt="PyPI Downloads"></a>
+  <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/stargazers"><img src="https://img.shields.io/github/stars/vstorm-co/full-stack-ai-agent-template?style=flat&logo=github&color=yellow" alt="GitHub Stars"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue?logo=python&logoColor=white" alt="Python 3.11+"></a>
   <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/LICENSE"><img src="https://img.shields.io/github/license/vstorm-co/full-stack-ai-agent-template?color=blue" alt="License"></a>
   <img src="https://img.shields.io/badge/coverage-100%25-brightgreen" alt="Coverage">
+  <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/actions/workflows/ci.yml"><img src="https://github.com/vstorm-co/full-stack-ai-agent-template/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/blob/main/SECURITY.md"><img src="https://img.shields.io/badge/security-policy-blueviolet?logo=shieldsdotio&logoColor=white" alt="Security Policy"></a>
-  <a href="https://github.com/vstorm-co/full-stack-ai-agent-template/stargazers"><img src="https://img.shields.io/github/stars/vstorm-co/full-stack-ai-agent-template?style=flat&logo=github&color=yellow" alt="GitHub Stars"></a>
+  <a href="https://www.bestpractices.dev/projects/12539"><img src="https://www.bestpractices.dev/projects/12539/badge" alt="OpenSSF Best Practices"></a>
+  <a href="https://github.com/pydantic/pydantic-ai"><img src="https://img.shields.io/badge/Powered%20by-Pydantic%20AI-E92063?logo=pydantic&logoColor=white" alt="Pydantic AI"></a>
   <a href="https://x.com/Kacper95682155"><img src="https://img.shields.io/badge/X-000000?logo=x&logoColor=white" alt="X"></a>
 </p>
 
@@ -64,10 +67,21 @@
 
 ---
 
-## Related Projects
+## Vstorm OSS Ecosystem
 
-> [!TIP]
-> **Building advanced AI agents?** Check out [pydantic-deepagents](https://github.com/vstorm-co/pydantic-deepagents) — a deepagent framework built on pydantic-ai for building Claude Code-style AI agents with filesystem tools, subagent delegation, persistent memory, context management, cost tracking, and an interactive CLI.
+This template is part of a broader open-source ecosystem for production AI agents:
+
+| Project | Description | |
+|---------|-------------|---|
+| **[pydantic-deepagents](https://github.com/vstorm-co/pydantic-deepagents)** | The modular agent runtime for Python. Claude Code-style CLI with Docker sandbox, browser automation, multi-agent teams, and /improve. | [![Stars](https://img.shields.io/github/stars/vstorm-co/pydantic-deepagents?style=flat&logo=github&color=yellow)](https://github.com/vstorm-co/pydantic-deepagents) |
+| **[pydantic-ai-shields](https://github.com/vstorm-co/pydantic-ai-shields)** | Drop-in guardrails for Pydantic AI agents. 5 infra + 5 content shields. | [![Stars](https://img.shields.io/github/stars/vstorm-co/pydantic-ai-shields?style=flat&logo=github&color=yellow)](https://github.com/vstorm-co/pydantic-ai-shields) |
+| **[pydantic-ai-subagents](https://github.com/vstorm-co/pydantic-ai-subagents)** | Declarative multi-agent orchestration with token tracking. | [![Stars](https://img.shields.io/github/stars/vstorm-co/pydantic-ai-subagents?style=flat&logo=github&color=yellow)](https://github.com/vstorm-co/pydantic-ai-subagents) |
+| **[summarization-pydantic-ai](https://github.com/vstorm-co/pydantic-ai-summarization)** | Smart context compression for long-running agents. | [![Stars](https://img.shields.io/github/stars/vstorm-co/summarization-pydantic-ai?style=flat&logo=github&color=yellow)](https://github.com/vstorm-co/summarization-pydantic-ai) |
+| **[pydantic-ai-backend](https://github.com/vstorm-co/pydantic-ai-backend)** | Sandboxed execution for AI agents. Docker + Daytona. | [![Stars](https://img.shields.io/github/stars/vstorm-co/pydantic-ai-backend?style=flat&logo=github&color=yellow)](https://github.com/vstorm-co/pydantic-ai-backend) |
+
+> **Want the runtime behind this template's AI agents?** [pydantic-deepagents](https://github.com/vstorm-co/pydantic-deepagents) powers the `deepagents` framework option — install it standalone with `curl -fsSL .../install.sh | bash`.
+
+Browse all projects at [oss.vstorm.co](https://oss.vstorm.co)
 
 ---
 
@@ -108,9 +122,28 @@ fastapi-fullstack create my_ai_app --preset ai-agent     # AI agent with streami
 fastapi-fullstack create my_ai_app --minimal
 ```
 
-### Start Development
+### Start Development (Docker — recommended)
 
-After generating your project, follow these steps:
+The fastest way to get running — 2 commands:
+
+```bash
+cd my_ai_app
+make docker-up       # Start backend + database + migrations + admin user
+make docker-frontend # Start frontend
+```
+
+**Access:**
+
+- API: <http://localhost:8000>
+- Docs: <http://localhost:8000/docs>
+- Admin Panel: <http://localhost:8000/admin>
+- Frontend: <http://localhost:3000>
+
+> [!TIP]
+> That's it. Docker handles database setup, migrations, and admin user creation automatically.
+
+<details>
+<summary><b>Manual setup (without Docker)</b></summary>
 
 #### 1. Install dependencies
 
@@ -173,14 +206,7 @@ bun dev
 - Admin Panel: <http://localhost:8000/admin> (login with admin user)
 - Frontend: <http://localhost:3000>
 
-### Quick Start with Docker
-
-Run everything in Docker:
-
-```bash
-make docker-up       # Start backend + database
-make docker-frontend # Start frontend
-```
+</details>
 
 ### Using the Project CLI
 
@@ -229,6 +255,18 @@ Use `make help` to see all available Makefile shortcuts.
 | Logfire (PydanticAI) | LangSmith (LangChain) |
 |:---:|:---:|
 | ![Logfire](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/logfire.png) | ![LangSmith](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/langsmith.png) |
+
+### Messaging Channels
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/telegram_icon.png" width="40" alt="Telegram">
+  &nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/slack_icon.png" width="40" alt="Slack">
+</p>
+
+| Telegram Bot |
+|:---:|
+| ![Telegram](https://raw.githubusercontent.com/vstorm-co/full-stack-ai-agent-template/main/assets/telegram.png) |
 
 ### Admin, Monitoring & API
 

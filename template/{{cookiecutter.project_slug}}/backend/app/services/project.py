@@ -37,7 +37,7 @@ class ProjectService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    # ── Docker lifecycle helpers ──────────────────────────────────────────────
+    # Docker lifecycle helpers
 
     def _make_names(self, project_id: str) -> tuple[str, str]:
         """Generate stable container and volume names for a project."""
@@ -82,7 +82,7 @@ class ProjectService:
         except Exception as exc:  # pragma: no cover
             logger.warning("Could not remove Docker resources for %s: %s", container_name, exc)
 
-    # ── Project CRUD ──────────────────────────────────────────────────────────
+    # Project CRUD
 
     async def create(self, data: ProjectCreate, *, owner_id: UUID) -> Project:
         """Create a project and provision its Docker volume."""
@@ -168,7 +168,7 @@ class ProjectService:
         await project_repo.delete_project(self.db, project_id)
         self._remove_docker_resources(container_name, volume_name)
 
-    # ── Member Management ────────────────────────────────────────────────────
+    # Member Management
 
     async def list_members(
         self, project_id: UUID, *, user_id: UUID
@@ -264,7 +264,7 @@ class ProjectService:
                 details={"user_id": str(target_user_id)},
             )
 
-    # ── Access Control ────────────────────────────────────────────────────────
+    # Access Control
 
     async def _assert_access(
         self,

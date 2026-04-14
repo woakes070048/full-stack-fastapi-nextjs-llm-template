@@ -14,9 +14,6 @@ dependencies = [
     "pydantic[email]>=2.12.0",
     "pydantic-settings>=2.13.0",
     "python-multipart>=0.0.20",
-{%- if cookiecutter.enable_orjson %}
-    "orjson>=3.10.0",
-{%- endif %}
 {%- if cookiecutter.enable_logfire %}
 {%- set logfire_extras = ['fastapi'] %}
 {%- if cookiecutter.use_postgresql and cookiecutter.logfire_database %}
@@ -106,7 +103,7 @@ dependencies = [
 {%- endif %}
 {%- if cookiecutter.use_pydantic_ai %}
 {%- if cookiecutter.use_openai %}
-    "pydantic-ai[duckduckgo,web-fetch]>=1.80.0",
+    "pydantic-ai-slim[openai,duckduckgo,web-fetch]>=1.80.0",
 {%- endif %}
 {%- if cookiecutter.use_anthropic %}
     "pydantic-ai-slim[anthropic,duckduckgo,web-fetch]>=1.80.0",
@@ -176,7 +173,6 @@ dependencies = [
     "pydantic-ai-backend[console]>=0.2.4",
     # pydantic-ai with web search and fetch support (WebSearch, WebFetch capabilities)
     "pydantic-ai-slim[duckduckgo,web-fetch]>=1.80.0",
-    # Optional: install pydantic-ai-backend[docker] for DockerSandbox support
 {%- endif %}
 {%- if cookiecutter.enable_rag %}
     # Vector store
@@ -332,7 +328,7 @@ invalid-argument-type = "warn"
 invalid-assignment = "warn"
 # Callable[..., Any] doesn't expose __name__ but function objects do
 unresolved-attribute = "warn"
-# datetime.utcnow and ORJSONResponse deprecation warnings
+# datetime.utcnow deprecation warnings
 deprecated = "warn"
 # Optional deps imported inside try/except (pymupdf, docx, faker)
 unresolved-import = "warn"

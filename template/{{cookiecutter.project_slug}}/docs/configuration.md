@@ -206,10 +206,7 @@ AI_AVAILABLE_MODELS=["gpt-4.1-mini","gpt-4.1","claude-sonnet-4-6"]
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DEEPAGENTS_BACKEND_TYPE` | `state` | Backend: `state` (in-memory, ephemeral) or `docker` (isolated Docker container) |
-| `DEEPAGENTS_WORKSPACE_DIR` | `/workspace` | Working directory inside the Docker container |
-| `DEEPAGENTS_DOCKER_IMAGE` | `python:3.12-slim` | Docker image for sandbox backend |
-| `DEEPAGENTS_DOCKER_TIMEOUT` | `30` | Default command timeout for docker backend (seconds) |
+| `DEEPAGENTS_BACKEND_TYPE` | `state` | Backend: `state` (in-memory, ephemeral) |
 | `DEEPAGENTS_MEMORY_PATHS` | (none) | Comma-separated AGENTS.md memory file paths loaded at agent startup |
 | `DEEPAGENTS_SKILLS_PATHS` | (none) | Comma-separated paths to skill directories |
 | `DEEPAGENTS_ENABLE_FILESYSTEM` | `true` | Enable filesystem tools (ls, read, write, edit, glob, grep) |

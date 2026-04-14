@@ -18,7 +18,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 {%- if cookiecutter.use_openai %}
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 {%- endif %}
 {%- if cookiecutter.use_anthropic %}
@@ -86,7 +86,7 @@ class AssistantAgent:
     def _create_agent(self) -> Agent[Deps, str]:
         """Create and configure the PydanticAI agent."""
 {%- if cookiecutter.use_openai %}
-        model = OpenAIChatModel(
+        model = OpenAIResponsesModel(
             self.model_name,
             provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY),
         )

@@ -33,7 +33,7 @@ class ConversationShareService:
 
         Only the conversation owner can share.
         """
-        conv = await conversation_repo.get_conversation(self.db, conversation_id)
+        conv = await conversation_repo.get_conversation_by_id(self.db, conversation_id)
         if not conv:
             raise NotFoundError(message="Conversation not found", details={"conversation_id": str(conversation_id)})
         if conv.user_id != shared_by:
@@ -80,7 +80,7 @@ class ConversationShareService:
 
     async def list_shares(self, conversation_id: UUID, user_id: UUID) -> list:
         """List all shares for a conversation. Owner only."""
-        conv = await conversation_repo.get_conversation(self.db, conversation_id)
+        conv = await conversation_repo.get_conversation_by_id(self.db, conversation_id)
         if not conv:
             raise NotFoundError(message="Conversation not found")
         if conv.user_id != user_id:
@@ -115,10 +115,31 @@ class ConversationShareService:
         share = await conversation_share_repo.get_by_token(self.db, token)
         if not share:
             raise NotFoundError(message="Share link not found or expired")
-        conv = await conversation_repo.get_conversation(self.db, share.conversation_id)
+        conv = await conversation_repo.get_conversation_by_id(
+            self.db, share.conversation_id, include_messages=True
+        )
         if not conv:
             raise NotFoundError(message="Conversation not found")
-        return {"conversation": conv, "share": share}
+        return {
+            "conversation": {
+                "id": str(conv.id),
+                "title": conv.title,
+                "messages": [
+                    {
+                        "id": str(m.id),
+                        "role": m.role,
+                        "content": m.content,
+                        "created_at": m.created_at.isoformat() if m.created_at else None,
+                    }
+                    for m in (conv.messages or [])
+                ],
+            },
+            "share": {
+                "id": str(share.id),
+                "permission": share.permission,
+                "share_token": share.share_token,
+            },
+        }
 
 
 {%- elif cookiecutter.use_sqlite %}
@@ -151,7 +172,7 @@ class ConversationShareService:
         permission: str = "view",
     ) -> dict:
         """Share a conversation with a user or generate a public link."""
-        conv = conversation_repo.get_conversation(self.db, conversation_id)
+        conv = conversation_repo.get_conversation_by_id(self.db, conversation_id)
         if not conv:
             raise NotFoundError(message="Conversation not found", details={"conversation_id": conversation_id})
         if conv.user_id != shared_by:
@@ -197,7 +218,7 @@ class ConversationShareService:
 
     def list_shares(self, conversation_id: str, user_id: str) -> list:
         """List all shares for a conversation. Owner only."""
-        conv = conversation_repo.get_conversation(self.db, conversation_id)
+        conv = conversation_repo.get_conversation_by_id(self.db, conversation_id)
         if not conv:
             raise NotFoundError(message="Conversation not found")
         if conv.user_id != user_id:
@@ -229,10 +250,31 @@ class ConversationShareService:
         share = conversation_share_repo.get_by_token(self.db, token)
         if not share:
             raise NotFoundError(message="Share link not found or expired")
-        conv = conversation_repo.get_conversation(self.db, share.conversation_id)
+        conv = conversation_repo.get_conversation_by_id(
+            self.db, share.conversation_id, include_messages=True
+        )
         if not conv:
             raise NotFoundError(message="Conversation not found")
-        return {"conversation": conv, "share": share}
+        return {
+            "conversation": {
+                "id": str(conv.id),
+                "title": conv.title,
+                "messages": [
+                    {
+                        "id": str(m.id),
+                        "role": m.role,
+                        "content": m.content,
+                        "created_at": m.created_at.isoformat() if m.created_at else None,
+                    }
+                    for m in (conv.messages or [])
+                ],
+            },
+            "share": {
+                "id": str(share.id),
+                "permission": share.permission,
+                "share_token": share.share_token,
+            },
+        }
 
 
 {%- elif cookiecutter.use_mongodb %}
@@ -333,13 +375,35 @@ class ConversationShareService:
 
     async def get_by_token(self, token: str) -> dict:
         """Get a shared conversation by its public token."""
+        from app.repositories import conversation_repo as conv_repo_mongo
+
         share = await conversation_share_repo.get_by_token(token)
         if not share:
             raise NotFoundError(message="Share link not found or expired")
-        conv = await conversation_repo.get_conversation_by_id(share.conversation_id)
+        conv = await conv_repo_mongo.get_conversation_by_id(share.conversation_id)
         if not conv:
             raise NotFoundError(message="Conversation not found")
-        return {"conversation": conv, "share": share}
+        messages = await conv_repo_mongo.get_messages_by_conversation(str(conv.id))
+        return {
+            "conversation": {
+                "id": str(conv.id),
+                "title": conv.title,
+                "messages": [
+                    {
+                        "id": str(m.id),
+                        "role": m.role,
+                        "content": m.content,
+                        "created_at": m.created_at.isoformat() if m.created_at else None,
+                    }
+                    for m in messages
+                ],
+            },
+            "share": {
+                "id": str(share.id),
+                "permission": share.permission,
+                "share_token": share.share_token,
+            },
+        }
 
 
 {%- else %}

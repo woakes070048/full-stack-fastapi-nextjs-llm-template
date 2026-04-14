@@ -7,7 +7,7 @@ interface SharedConversationPageProps {
 }
 
 async function fetchSharedConversation(token: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const baseUrl = process.env.BACKEND_URL || "http://localhost:8000";
   const res = await fetch(`${baseUrl}/api/v1/conversations/shared/${token}`, {
     cache: "no-store",
   });

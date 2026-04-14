@@ -166,6 +166,10 @@ async def get_messages_by_conversation(
     query = select(Message).where(Message.conversation_id == conversation_id)
     if include_tool_calls:
         query = query.options(selectinload(Message.tool_calls))
+{%- if cookiecutter.use_jwt %}
+    from app.db.models.chat_file import ChatFile
+    query = query.options(selectinload(Message.files))
+{%- endif %}
     query = query.order_by(Message.created_at.asc()).offset(skip).limit(limit)
     result = await db.execute(query)
     return list(result.scalars().all())
@@ -455,6 +459,10 @@ def get_messages_by_conversation(
     query = select(Message).where(Message.conversation_id == conversation_id)
     if include_tool_calls:
         query = query.options(selectinload(Message.tool_calls))
+{%- if cookiecutter.use_jwt %}
+    from app.db.models.chat_file import ChatFile
+    query = query.options(selectinload(Message.files))
+{%- endif %}
     query = query.order_by(Message.created_at.asc()).offset(skip).limit(limit)
     result = db.execute(query)
     return list(result.scalars().all())

@@ -2,6 +2,8 @@
 {%- if cookiecutter.use_postgresql %}
 """ChannelBotService — business logic for bot management (PostgreSQL async)."""
 
+from __future__ import annotations
+
 import logging
 import secrets
 from uuid import UUID
@@ -112,6 +114,8 @@ class ChannelBotService:
 {%- elif cookiecutter.use_sqlite %}
 """ChannelBotService — business logic for bot management (SQLite sync)."""
 
+from __future__ import annotations
+
 import logging
 import secrets
 
@@ -218,6 +222,8 @@ class ChannelBotService:
 
 {%- elif cookiecutter.use_mongodb %}
 """ChannelBotService — business logic for bot management (MongoDB)."""
+
+from __future__ import annotations
 
 import logging
 import secrets

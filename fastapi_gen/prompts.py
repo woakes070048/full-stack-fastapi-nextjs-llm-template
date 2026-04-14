@@ -367,11 +367,6 @@ def prompt_integrations(
                 value="cors",
                 checked=True,
             ),
-            questionary.Choice(
-                "orjson — faster JSON serialization",
-                value="orjson",
-                checked=True,
-            ),
         ]
     )
 
@@ -398,7 +393,6 @@ def prompt_integrations(
         "enable_file_storage": "file_storage" in features,
         "enable_webhooks": "webhooks" in features,
         "enable_cors": "cors" in features,
-        "enable_orjson": "orjson" in features,
     }
 
 
@@ -617,22 +611,14 @@ def prompt_sandbox_backend(ai_framework: AIFrameworkType) -> str:
     console.print("[bold cyan]Agent Sandbox Environment[/]")
     console.print()
 
+    choices = [
+        questionary.Choice("State (in-memory, ephemeral — default)", value="state"),
+    ]
+
     if ai_framework == AIFrameworkType.PYDANTIC_DEEP:
-        choices = [
-            questionary.Choice(
-                "Docker sandbox (recommended — isolated, persistent)", value="docker"
-            ),
+        choices.append(
             questionary.Choice("Daytona workspace (cloud dev environment)", value="daytona"),
-            questionary.Choice("State (in-memory, ephemeral — dev only)", value="state"),
-        ]
-    else:
-        # DeepAgents
-        choices = [
-            questionary.Choice(
-                "Docker sandbox (recommended — isolated, persistent)", value="docker"
-            ),
-            questionary.Choice("State (in-memory, ephemeral — dev only)", value="state"),
-        ]
+        )
 
     return cast(
         str,
@@ -970,7 +956,7 @@ def run_interactive_prompts() -> ProjectConfig:
     ai_framework = prompt_ai_framework()
 
     # Sandbox backend selection for agentic coding frameworks
-    sandbox_backend = "docker"
+    sandbox_backend = "state"
     if ai_framework in (AIFrameworkType.DEEPAGENTS, AIFrameworkType.PYDANTIC_DEEP):
         sandbox_backend = prompt_sandbox_backend(ai_framework)
 

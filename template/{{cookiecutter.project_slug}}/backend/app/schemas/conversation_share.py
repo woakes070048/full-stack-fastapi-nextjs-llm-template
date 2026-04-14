@@ -53,9 +53,7 @@ class ConversationShareList(BaseSchema):
     total: int
 
 
-# ---------------------------------------------------------------------------
 # Admin schemas
-# ---------------------------------------------------------------------------
 
 
 class AdminConversationRead(BaseSchema):

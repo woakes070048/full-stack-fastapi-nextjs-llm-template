@@ -73,9 +73,7 @@ class ChannelMessageRouter:
         from app.repositories import channel_bot_repo
         from app.services.agent_invocation import AgentInvocationService
 
-        # ------------------------------------------------------------------
         # 1. Load bot
-        # ------------------------------------------------------------------
 {%- if cookiecutter.use_postgresql %}
         bot = await channel_bot_repo.get_by_id(db, incoming.bot_id)
 {%- elif cookiecutter.use_sqlite %}
@@ -89,53 +87,42 @@ class ChannelMessageRouter:
             logger.debug("Bot %s not found or inactive — ignoring", incoming.bot_id)
             return
 
-        # ------------------------------------------------------------------
         # 2. Check access policy
-        # ------------------------------------------------------------------
         try:
             self._check_access(incoming, bot)
         except AuthorizationError as exc:
             await self._send_reply(bot, incoming, exc.message)
             return
 
-        # ------------------------------------------------------------------
         # 3. Handle commands
-        # ------------------------------------------------------------------
         command_reply = await self._handle_command(incoming.text, incoming, bot, db)
         if command_reply is not None:
             await self._send_reply(bot, incoming, command_reply)
             return
 
-        # ------------------------------------------------------------------
         # 4. Resolve identity
-        # ------------------------------------------------------------------
         try:
             identity = await self._resolve_identity(incoming, bot, db)
         except AuthorizationError as exc:
             await self._send_reply(bot, incoming, exc.message)
             return
 
-        # ------------------------------------------------------------------
         # 5. Resolve session
-        # ------------------------------------------------------------------
         session = await self._resolve_session(incoming, bot, identity, db)
 
-        # ------------------------------------------------------------------
         # 6. Rate limit
-        # ------------------------------------------------------------------
         try:
             self._check_rate_limit(bot, str(identity.id))
         except BadRequestError as exc:
             await self._send_reply(bot, incoming, exc.message)
             return
 
-        # ------------------------------------------------------------------
         # 7. Invoke agent
-        # ------------------------------------------------------------------
+        tool_events = []
         try:
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
             svc = AgentInvocationService(db)
-            response_text = await svc.invoke(
+            response_text, tool_events = await svc.invoke(
                 user_message=incoming.text,
                 conversation_id=session.conversation_id,
                 user_id=identity.user_id,
@@ -145,7 +132,7 @@ class ChannelMessageRouter:
             )
 {%- elif cookiecutter.use_mongodb %}
             svc = AgentInvocationService()
-            response_text = await svc.invoke(
+            response_text, tool_events = await svc.invoke(
                 user_message=incoming.text,
                 conversation_id=str(session.conversation_id),
                 user_id=str(identity.user_id) if identity.user_id else None,
@@ -155,7 +142,7 @@ class ChannelMessageRouter:
             )
 {%- else %}
             svc = AgentInvocationService(db)
-            response_text = await svc.invoke(
+            response_text, tool_events = await svc.invoke(
                 user_message=incoming.text,
                 conversation_id=session.conversation_id,
                 user_id=identity.user_id,
@@ -165,14 +152,20 @@ class ChannelMessageRouter:
             logger.exception("Agent invocation failed for bot %s", incoming.bot_id)
             response_text = "Sorry, something went wrong. Please try again."
 
-        # ------------------------------------------------------------------
-        # 8. Send reply
-        # ------------------------------------------------------------------
+        # 8. Send tool event summaries (if any)
+        for te in tool_events:
+            args_str = ", ".join(f"{k}={v!r}" for k, v in te.args.items()) if te.args else ""
+            result_preview = (te.result[:200] + "...") if len(te.result) > 200 else te.result
+            tool_msg = f"🔧 {te.tool_name}({args_str})\n→ {result_preview}"
+            try:
+                await self._send_reply(bot, incoming, tool_msg)
+            except Exception:
+                logger.debug("Failed to send tool event for %s", te.tool_name)
+
+        # 9. Send reply
         await self._send_reply(bot, incoming, response_text)
 
-    # -----------------------------------------------------------------------
     # Access policy helpers
-    # -----------------------------------------------------------------------
 
     @staticmethod
     def _parse_policy(bot: Any) -> dict[str, Any]:
@@ -206,9 +199,7 @@ class ChannelMessageRouter:
                 )
         # "open" and "jwt_linked" pass through here; jwt_linked is enforced at identity resolution
 
-    # -----------------------------------------------------------------------
     # Command handling
-    # -----------------------------------------------------------------------
 
     async def _handle_command(
         self, text: str, incoming: IncomingMessage, bot: Any, db: Any
@@ -455,9 +446,7 @@ class ChannelMessageRouter:
 
         return None
 
-    # -----------------------------------------------------------------------
     # Identity resolution
-    # -----------------------------------------------------------------------
 
     async def _resolve_identity(
         self, incoming: IncomingMessage, bot: Any, db: Any
@@ -523,9 +512,7 @@ class ChannelMessageRouter:
 
         return identity
 
-    # -----------------------------------------------------------------------
     # Session resolution
-    # -----------------------------------------------------------------------
 
     async def _resolve_session(
         self, incoming: IncomingMessage, bot: Any, identity: Any, db: Any
@@ -587,9 +574,7 @@ class ChannelMessageRouter:
 {%- endif %}
         return session
 
-    # -----------------------------------------------------------------------
     # Rate limiting
-    # -----------------------------------------------------------------------
 
     def _check_rate_limit(self, bot: Any, identity_id: str) -> None:
         """In-memory token-bucket rate limiter.
@@ -621,9 +606,7 @@ class ChannelMessageRouter:
         else:
             _rate_buckets[key] = (1, now)
 
-    # -----------------------------------------------------------------------
     # Send helper
-    # -----------------------------------------------------------------------
 
     async def _send_reply(self, bot: Any, incoming: IncomingMessage, text: str) -> None:
         """Decrypt the bot token and send a reply via the appropriate adapter."""

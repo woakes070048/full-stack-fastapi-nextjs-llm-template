@@ -319,16 +319,8 @@ class Settings(BaseSettings):
 {%- if cookiecutter.use_deepagents %}
 
     # === DeepAgents Configuration ===
-    # Backend type: "state" (in-memory) or "docker" (isolated sandbox)
-    # "state"  — ephemeral, no persistence between WebSocket connections
-    # "docker" — isolated Docker container per conversation (requires Docker)
+    # Backend type: "state" (in-memory, ephemeral per WebSocket connection)
     DEEPAGENTS_BACKEND_TYPE: str = "{{ cookiecutter.sandbox_backend }}"
-    # Working directory inside the Docker container (used when DEEPAGENTS_BACKEND_TYPE="docker")
-    DEEPAGENTS_WORKSPACE_DIR: str = "/workspace"
-    # Docker image for sandbox backend (used when DEEPAGENTS_BACKEND_TYPE="docker")
-    DEEPAGENTS_DOCKER_IMAGE: str = "python:3.12-slim"
-    # Default command timeout for docker backend (seconds)
-    DEEPAGENTS_DOCKER_TIMEOUT: int = 30
     # Memory file paths (comma-separated AGENTS.md paths, e.g. "/memory/AGENTS.md")
     DEEPAGENTS_MEMORY_PATHS: str | None = None
     # Skills paths (comma-separated, relative to backend dir)
@@ -347,13 +339,8 @@ class Settings(BaseSettings):
 {%- if cookiecutter.use_pydantic_deep %}
 
     # === PydanticDeep Configuration ===
-    # Backend type: "state" (in-memory), "docker" (sandbox), or "daytona" (cloud)
-    # "state"  — simple, no persistence between WebSocket connections
-    # "docker" — isolated Docker container per conversation (requires Docker)
-    # "daytona" — Daytona cloud workspace per conversation
+    # Backend type: "state" (in-memory) or "daytona" (Daytona cloud workspace)
     PYDANTIC_DEEP_BACKEND_TYPE: str = "{{ cookiecutter.sandbox_backend }}"
-    # Docker image for sandbox backend (used when PYDANTIC_DEEP_BACKEND_TYPE="docker")
-    PYDANTIC_DEEP_DOCKER_IMAGE: str = "python:3.12-slim"
     # Feature flags
     PYDANTIC_DEEP_INCLUDE_SUBAGENTS: bool = True   # subagent delegation
     PYDANTIC_DEEP_INCLUDE_SKILLS: bool = True       # SKILL.md discovery

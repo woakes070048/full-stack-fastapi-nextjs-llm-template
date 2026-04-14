@@ -48,23 +48,46 @@ Out of scope:
 - Security issues introduced by users after project generation
 - Issues requiring physical access to the machine
 
-## Security in Generated Projects
+## Security Requirements — What You Can and Cannot Expect
 
-**CLI generator:**
+### What the generated project provides
+
+Generated projects ship with the following security controls enabled by default:
+
+| Control | Implementation | OWASP |
+|---------|---------------|-------|
+| **Authentication** | JWT access + refresh tokens, bcrypt password hashing, API key auth | A07:2021 |
+| **Authorization** | Role-based access control (RBAC) with `RoleChecker` dependency | A01:2021 |
+| **SQL Injection prevention** | SQLAlchemy ORM with parameterized queries (no raw SQL) | A03:2021 |
+| **XSS prevention** | HTML sanitization utilities, Pydantic input validation | A03:2021 |
+| **SSRF protection** | `validate_webhook_url()` blocks private/reserved/loopback IPs, DNS rebinding checks | A10:2021 |
+| **CORS** | Explicit origin allowlists, `*` blocked in production | A05:2021 |
+| **CSRF protection** | HTTP-only cookies for tokens, SameSite cookie attributes | A01:2021 |
+| **Input validation** | All API inputs validated via Pydantic v2 strict schemas | A03:2021 |
+| **Secret management** | `.env`-based configuration, `.gitignore` excludes secrets | A02:2021 |
+| **Dependency scanning** | `pip-audit` in CI scans for known CVEs on every build | A06:2021 |
+| **Path traversal prevention** | `sanitize_filename()` and `validate_safe_path()` utilities | A01:2021 |
+| **Encrypted token storage** | Channel bot tokens encrypted at rest with Fernet (AES-128-CBC) | A02:2021 |
+| **Constant-time comparison** | `secrets.compare_digest()` for API key verification | A02:2021 |
+| **Webhook signature verification** | HMAC-SHA256 for Telegram and Slack webhook endpoints | A08:2021 |
+
+### What is NOT provided (user responsibility)
+
+- **Network security** — Firewalls, VPNs, TLS termination are your responsibility. The template includes Traefik with Let's Encrypt for HTTPS, but you must configure DNS and deployment.
+- **Infrastructure hardening** — OS patching, container image scanning, Kubernetes network policies are out of scope.
+- **Data encryption at rest** — Database-level encryption (TDE) is not configured by default. Enable it at the database layer.
+- **Rate limiting tuning** — Default rate limits are generous for development. Tune for production workloads.
+- **LLM output safety** — The template does not filter or sanitize LLM outputs. Implement content moderation if user-facing.
+- **Secrets rotation** — JWT secret keys and encryption keys are generated once. Implement rotation for production.
+- **Audit logging** — Request-level logging is included, but compliance audit trails (SOC2, HIPAA) require additional implementation.
+- **Penetration testing** — Generated code follows security best practices but has not been formally pen-tested. Test before production deployment.
+
+### CLI generator security
+
 - `pip-audit` in CI — scans for known CVEs on every build
-- `ty` type checking — prevents type-related vulnerabilities
+- `ty` type checking — catches type-related issues at build time
 - Ruff linting — enforces safe coding patterns
-
-**Generated projects include:**
-- **SSRF protection (CWE-918)** — `validate_webhook_url()` blocks private/reserved/loopback IPs and validates DNS resolution
-- **JWT + API Key authentication** — Secure defaults with bcrypt password hashing and refresh token rotation
-- **RBAC** — Role-based access control out of the box
-- **CORS** — Explicit origin allowlists
-- **SQL injection prevention** — SQLAlchemy parameterized queries
-- **Input validation** — All API inputs validated via Pydantic v2 strict schemas
-- **Secret management** — `.env`-based configuration, secrets never committed
-- **HTTP-only cookies** — For token storage on the frontend
-- **Secret key validation** — Minimum 32-character key enforcement
+- 100% test coverage — all template combinations tested
 
 ## Acknowledgements
 

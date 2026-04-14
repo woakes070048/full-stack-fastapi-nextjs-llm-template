@@ -2455,7 +2455,7 @@ async def agent_websocket(
 
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
 
-                # ── Load attached files → include content in user message ──
+                # Load attached files → include content in user message
                 agent_input = user_message
 
                 if file_ids:
@@ -2994,7 +2994,7 @@ async def agent_websocket(
 
 {%- if cookiecutter.use_postgresql or cookiecutter.use_sqlite %}
 
-                # ── Load attached files → write to workspace + augment input ──
+                # Load attached files → write to workspace + augment input
                 from pydantic_ai.messages import BinaryContent
                 from app.db.models.chat_file import ChatFile as ChatFileModel
                 from app.services.file_storage import get_file_storage
@@ -3400,22 +3400,10 @@ async def project_chat_websocket(
                 await websocket.close(code=4003, reason=str(exc))
                 return
 
-        # Build agent scoped to this project's Docker sandbox
-        from pydantic_ai_backends import DockerSandbox, StateBackend
+        # Build agent backend for this project
+        from pydantic_ai_backends import StateBackend
 
-        backend: Any
-        if project.container_name and project.volume_name:
-            try:
-                backend = DockerSandbox(
-                    image=project.image,
-                    container_name=project.container_name,
-                    volumes={project.volume_name: "/workspace"},
-                    work_dir="/workspace",
-                )
-            except Exception:
-                backend = StateBackend()
-        else:
-            backend = StateBackend()
+        backend: Any = StateBackend()
 
         assistant = get_agent(
             conversation_id=str(conversation_id),

@@ -583,9 +583,7 @@ async def add_message(
 
 {%- if cookiecutter.use_jwt %}
 
-# ---------------------------------------------------------------------------
 # Sharing endpoints
-# ---------------------------------------------------------------------------
 
 from app.api.deps import ConversationShareSvc
 from app.schemas.conversation_share import ConversationShareCreate, ConversationShareList, ConversationShareRead

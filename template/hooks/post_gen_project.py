@@ -80,9 +80,7 @@ def remove_dir(path: str) -> None:
 # Base directories
 backend_app = os.path.join(os.getcwd(), "backend", "app")
 
-# ============================================================================
 # Cleanup stub files based on disabled features
-# ============================================================================
 print("Cleaning up unused files...")
 
 # --- AI Agent files (remove unused framework-specific files) ---

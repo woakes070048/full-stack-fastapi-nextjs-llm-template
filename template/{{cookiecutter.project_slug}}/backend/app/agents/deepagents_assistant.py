@@ -14,13 +14,9 @@ Human-in-the-loop (HITL) support:
 
 Backend types (DEEPAGENTS_BACKEND_TYPE):
 - "state"  — in-memory, ephemeral per WebSocket connection (default)
-- "docker" — isolated Docker container per conversation (requires Docker)
 
 Configuration via settings:
-- DEEPAGENTS_BACKEND_TYPE: Backend type (state/local/docker)
-- DEEPAGENTS_WORKSPACE_DIR: Root dir for local/docker workspaces
-- DEEPAGENTS_DOCKER_IMAGE: Docker image for sandbox (default: python:3.12-slim)
-- DEEPAGENTS_DOCKER_TIMEOUT: Command timeout for docker backend (seconds)
+- DEEPAGENTS_BACKEND_TYPE: Backend type (state)
 - DEEPAGENTS_MEMORY_PATHS: Comma-separated AGENTS.md memory file paths
 - DEEPAGENTS_SKILLS_PATHS: Comma-separated skill paths
 - DEEPAGENTS_ENABLE_EXECUTE: Enable shell execution (default: False)
@@ -54,7 +50,6 @@ from app.agents.prompts import DEFAULT_SYSTEM_PROMPT
 {%- if cookiecutter.enable_rag %}
 from app.agents.prompts import get_system_prompt_with_rag
 {%- endif %}
-from app.agents.deepagents_docker_sandbox import DeepAgentsDockerSandbox
 from app.agents.tools import get_current_datetime
 {%- if cookiecutter.enable_web_search %}
 from app.agents.tools.web_search import web_search
@@ -199,10 +194,7 @@ class DeepAgentsAssistant:
     DeepAgents creates a LangGraph-based agent with built-in tools for
     filesystem operations, task management, and code execution.
 
-    Backend types (DEEPAGENTS_BACKEND_TYPE):
-    - "state"  — StateBackend, in-memory file state (default, no external deps)
-    - "docker" — DeepAgentsDockerSandbox, isolated container per conversation
-
+    Backend: StateBackend (in-memory file state, no external deps).
     Skills can be configured via DEEPAGENTS_SKILLS_PATHS setting.
     Human-in-the-loop via DEEPAGENTS_INTERRUPT_TOOLS setting.
     """
@@ -226,9 +218,7 @@ class DeepAgentsAssistant:
             skills: List of skill paths (default from settings.DEEPAGENTS_SKILLS_PATHS)
             memory: List of AGENTS.md memory paths (default from settings.DEEPAGENTS_MEMORY_PATHS)
             interrupt_on: Dict of tool names to interrupt configs (default from settings)
-            conversation_id: Unique ID for the conversation — used to scope local/docker
-                workspaces. When DEEPAGENTS_BACKEND_TYPE="docker", one container is created
-                per conversation_id so file state persists across reconnects.
+            conversation_id: Unique ID for the conversation.
         """
         self.model_name = model_name or settings.AI_MODEL
         self.temperature = temperature or settings.AI_TEMPERATURE
@@ -243,34 +233,13 @@ class DeepAgentsAssistant:
         self.conversation_id = conversation_id
         self._graph = None
         self._checkpointer = MemorySaver()
-        self._docker_sandbox: DeepAgentsDockerSandbox | None = None
 
     def _create_backend(self):
-        """Create the file-storage backend based on DEEPAGENTS_BACKEND_TYPE.
-
-        Backend types:
-        - "state"  → StateBackend factory (in-memory, ephemeral per session — default)
-        - "docker" → DeepAgentsDockerSandbox, isolated container per conversation
+        """Create the file-storage backend.
 
         Returns:
-            BackendFactory (callable) for state, or BackendProtocol instance for
-            docker. Both are accepted by create_deep_agent().
+            BackendFactory (callable) for StateBackend (in-memory, ephemeral).
         """
-        if settings.DEEPAGENTS_BACKEND_TYPE.lower() == "docker":
-            container_name = (
-                f"deepagents-{self.conversation_id}"
-                if self.conversation_id
-                else None
-            )
-            self._docker_sandbox = DeepAgentsDockerSandbox(
-                image=settings.DEEPAGENTS_DOCKER_IMAGE,
-                workspace=settings.DEEPAGENTS_WORKSPACE_DIR,
-                timeout=settings.DEEPAGENTS_DOCKER_TIMEOUT,
-                container_name=container_name,
-            )
-            return self._docker_sandbox
-
-        # Default: state backend (factory form required by StateBackend)
         return lambda rt: StateBackend(rt)
 
     def _create_model(self):
@@ -304,7 +273,7 @@ class DeepAgentsAssistant:
         """Get or create the compiled graph instance.
 
         The agent is created with:
-        - Backend: state / local / docker based on DEEPAGENTS_BACKEND_TYPE
+        - Backend: StateBackend (in-memory)
         - TodoListMiddleware: For task tracking
         - FilesystemMiddleware: For file operations
         - SubAgentMiddleware: For spawning subagents
@@ -608,10 +577,6 @@ def get_agent(
     conversation_id: str | None = None,
 ) -> DeepAgentsAssistant:
     """Factory function to create a DeepAgentsAssistant.
-
-    For "local" and "docker" backend types, pass conversation_id to scope
-    the workspace/container to a specific conversation so file state persists
-    across reconnects.
 
     Args:
         skills: Optional list of skill paths to override settings.

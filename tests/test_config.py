@@ -182,7 +182,6 @@ class TestProjectConfig:
             "enable_websockets",
             "enable_file_storage",
             "enable_cors",
-            "enable_orjson",
             "enable_pytest",
             "enable_precommit",
             "enable_makefile",

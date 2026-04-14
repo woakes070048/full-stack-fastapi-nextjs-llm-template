@@ -8,17 +8,14 @@ PydanticDeep is built on PydanticAI and provides:
 - Skills system (SKILL.md files)
 - Memory persistence (MEMORY.md across sessions)
 - Context file discovery (AGENTS.md, SOUL.md from workspace root)
-- Docker sandbox support for isolated code execution
 - Built-in web search and web fetch
 
 Backend types (set via PYDANTIC_DEEP_BACKEND_TYPE):
-  "docker"  — Docker sandbox (default — isolated execution, persistent volumes)
+  "state"   — In-memory (default, no persistence)
   "daytona" — Daytona cloud workspace (isolated, cloud-native)
-  "state"   — In-memory (no persistence, dev only)
 
 Configuration via settings:
-  PYDANTIC_DEEP_BACKEND_TYPE  : "docker" | "daytona" | "state" (default: "docker")
-  PYDANTIC_DEEP_DOCKER_IMAGE  : Docker image (default: "python:3.12-slim")
+  PYDANTIC_DEEP_BACKEND_TYPE  : "state" | "daytona" (default: "state")
   PYDANTIC_DEEP_INCLUDE_SUBAGENTS : enable subagent delegation (default: True)
   PYDANTIC_DEEP_INCLUDE_SKILLS    : enable skills system (default: True)
   PYDANTIC_DEEP_INCLUDE_PLAN      : enable planner subagent (default: True)
@@ -28,7 +25,6 @@ Configuration via settings:
 """
 
 import logging
-from pathlib import Path
 from typing import Any, TypedDict
 
 from pydantic_ai import Agent
@@ -88,9 +84,8 @@ class PydanticDeepAssistant:
     """Deep agentic assistant powered by pydantic-deep.
 
     Wraps create_deep_agent() with web-app friendly defaults:
-    - DockerSandbox by default (isolated, persistent volumes)
+    - StateBackend by default (in-memory, ephemeral)
     - Optional DaytonaSandbox for cloud-native workspaces
-    - StateBackend for dev/testing (in-memory, ephemeral)
     - Conversation scoped by conversation_id (history_messages_path)
     - Non-interactive mode (no human-in-the-loop approval prompts)
     """
@@ -134,23 +129,6 @@ class PydanticDeepAssistant:
     def _create_backend(self) -> Any:
         """Create the file-storage backend based on PYDANTIC_DEEP_BACKEND_TYPE."""
         backend_type = settings.PYDANTIC_DEEP_BACKEND_TYPE
-
-        if backend_type == "docker":
-            try:
-                from pydantic_ai_backends import DockerSandbox
-
-                return DockerSandbox(
-                    image=settings.PYDANTIC_DEEP_DOCKER_IMAGE,
-                    container_name=f"pd-{self.conversation_id}",
-                    volumes={f"pd-vol-{self.conversation_id}": "/workspace"},
-                    work_dir="/workspace",
-                )
-            except ImportError:
-                logger.warning(
-                    "Docker backend not available — "
-                    "install 'pydantic-ai-backend[docker]'. Falling back to StateBackend."
-                )
-                return StateBackend()
 
         if backend_type == "daytona":
             try:
@@ -241,12 +219,10 @@ class PydanticDeepAssistant:
         deps = DeepAgentDeps(backend=backend)
         return agent, deps
 
-    # ------------------------------------------------------------------
     # Workspace file upload (Docker / Daytona only)
-    # ------------------------------------------------------------------
 
     async def write_file_to_workspace(self, rel_path: str, content: bytes | str) -> bool:
-        """Write a file into the sandbox workspace (Docker / Daytona).
+        """Write a file into the sandbox workspace (Daytona).
 
         For StateBackend (in-memory) this is a no-op — callers should fall back
         to including file content inline in the user message.
@@ -271,47 +247,10 @@ class PydanticDeepAssistant:
                 logger.warning("Failed to write %s via backend API: %s", rel_path, exc)
                 return False
 
-        # -- Docker: use docker cp ------------------------------------------
-        container_name = getattr(backend, "container_name", None)
-        if container_name:
-            import asyncio
-            import tempfile
-
-            # Validate path to prevent directory traversal
-            safe = Path(rel_path)
-            if safe.is_absolute() or ".." in safe.parts:
-                logger.warning("Rejected unsafe workspace path: %s", rel_path)
-                return False
-
-            work_dir = getattr(backend, "work_dir", "/workspace")
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                tmp.write(data)
-                tmp_path = tmp.name
-            try:
-                subdir = str(safe.parent)
-                proc = await asyncio.create_subprocess_exec(
-                    "docker", "exec", container_name,
-                    "mkdir", "-p", f"{work_dir}/{subdir}",
-                )
-                await proc.wait()
-                proc = await asyncio.create_subprocess_exec(
-                    "docker", "cp", tmp_path,
-                    f"{container_name}:{work_dir}/{rel_path}",
-                )
-                await proc.wait()
-                return proc.returncode == 0
-            except Exception as exc:
-                logger.warning("Failed to write %s to Docker workspace: %s", rel_path, exc)
-                return False
-            finally:
-                Path(tmp_path).unlink(missing_ok=True)
-
         # -- StateBackend: no real filesystem --------------------------------
         return False
 
-    # ------------------------------------------------------------------
     # Properties: lazy creation of agent + deps on first access
-    # ------------------------------------------------------------------
 
     @property
     def agent(self) -> Agent:
@@ -327,9 +266,7 @@ class PydanticDeepAssistant:
             self._agent, self._deps = self._build_agent_and_deps()
         return self._deps
 
-    # ------------------------------------------------------------------
     # Run / stream
-    # ------------------------------------------------------------------
 
     async def run(
         self,
@@ -364,9 +301,7 @@ class PydanticDeepAssistant:
         return result.output, tool_events, agent_context
 
 
-# ---------------------------------------------------------------------------
 # Factory helpers
-# ---------------------------------------------------------------------------
 
 
 def get_agent(
@@ -384,7 +319,7 @@ def get_agent(
         conversation_id: Scope history to this conversation (default: "default").
         user_id: Optional user identifier for context.
         user_name: Optional user display name for context.
-        backend_override: Pre-built backend (e.g. DockerSandbox for a project).
+        backend_override: Pre-built backend (e.g. DaytonaSandbox for a project).
             When provided, bypasses _create_backend() entirely.
         history_messages_path: Override the history file path inside the backend.
             Useful for project-scoped chats where each chat has its own path.

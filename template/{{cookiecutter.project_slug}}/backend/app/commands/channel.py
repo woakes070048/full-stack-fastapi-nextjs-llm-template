@@ -16,9 +16,7 @@ import click
 from app.commands import command, error, info, success, warning
 
 
-# ---------------------------------------------------------------------------
 # channel-list-bots
-# ---------------------------------------------------------------------------
 
 
 @command("channel-list-bots", help="List all registered channel bots")
@@ -74,9 +72,7 @@ def channel_list_bots(platform: str | None) -> None:
     asyncio.run(_run())
 
 
-# ---------------------------------------------------------------------------
 # channel-add-bot
-# ---------------------------------------------------------------------------
 
 
 @command("channel-add-bot", help="Register a new channel bot")
@@ -145,9 +141,7 @@ def channel_add_bot(platform: str, name: str, token: str, mode: str) -> None:
     asyncio.run(_run())
 
 
-# ---------------------------------------------------------------------------
 # channel-webhook-register
-# ---------------------------------------------------------------------------
 
 
 @command("channel-webhook-register", help="Register webhook URL for a Telegram bot")
@@ -204,9 +198,7 @@ def channel_webhook_register(bot_id: str) -> None:
     asyncio.run(_run())
 
 
-# ---------------------------------------------------------------------------
 # channel-webhook-delete
-# ---------------------------------------------------------------------------
 
 
 @command("channel-webhook-delete", help="Remove webhook for a bot (switch to polling)")
@@ -258,9 +250,7 @@ def channel_webhook_delete(bot_id: str) -> None:
     asyncio.run(_run())
 
 
-# ---------------------------------------------------------------------------
 # channel-test-message
-# ---------------------------------------------------------------------------
 
 
 @command("channel-test-message", help="Send a test message through a bot")

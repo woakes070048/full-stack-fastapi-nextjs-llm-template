@@ -1,52 +1,71 @@
 # Governance
 
-This document describes the governance model for **full-stack-ai-agent-template**.
+## Overview
 
-## Maintainers
-
-| Name | GitHub | Organization | Role |
-|------|--------|-------------|------|
-| Kacper Włodarczyk | [@DEENUU1](https://github.com/DEENUU1) | [Vstorm](https://vstorm.co) | Lead Maintainer |
-| Paweł Kiszczak | [@pawelkiszczak](https://github.com/pawelkiszczak) | [Vstorm](https://vstorm.co) | Core Maintainer |
+Full-Stack AI Agent Template is maintained by [Vstorm](https://vstorm.co), a Poland-based AI engineering consultancy.
 
 ## Decision Making
 
-Technical decisions are made by the lead maintainer with input from core maintainers and the community via GitHub Issues and Pull Requests. Decisions are made asynchronously — there are no required meetings.
+This project follows a **Benevolent Dictator** governance model:
 
-All changes to the codebase must pass the CI quality gates:
-- Ruff linting and formatting (zero violations)
-- ty type checking (zero errors)
-- pytest test suite
-- pip-audit security scan (zero high/critical vulnerabilities)
+- **Project Lead**: Kacper Wlodarczyk ([@sebastiondev](https://github.com/sebastiondev)) makes final decisions on project direction, feature inclusion, and releases.
+- **Community Input**: Feature requests, bug reports, and discussions happen via [GitHub Issues](https://github.com/vstorm-co/full-stack-ai-agent-template/issues) and Pull Requests. All input is considered.
+- **Pull Requests**: Reviewed by the project lead or designated maintainers. All PRs require at least one approving review before merge.
 
-For significant architectural changes, an Issue is opened first to allow community discussion before implementation begins.
+## Roles and Responsibilities
 
-## Becoming a Maintainer
+### Project Lead
 
-Contributors who have demonstrated sustained engagement with the project may be nominated as maintainers. The criteria for nomination:
+**Current**: Kacper Wlodarczyk ([@sebastiondev](https://github.com/sebastiondev))
 
-- 5 or more merged Pull Requests with meaningful contributions
-- Familiarity with the project's architecture, coding standards, and CI requirements
-- Active participation in Issue and PR discussions
+- Set project roadmap and long-term direction
+- Approve or reject new features and architectural changes
+- Cut releases and publish to PyPI
+- Respond to security vulnerability reports (per [SECURITY.md](SECURITY.md))
+- Grant or revoke maintainer access
+- Final authority on all merge decisions
 
-Nominations are made by existing maintainers via a GitHub Issue. Approval requires a simple majority of current maintainers. New maintainers are added to this document and granted repository write access.
+### Maintainer
 
-## Removing a Maintainer
+**Current**: Vstorm team
 
-A maintainer may step down voluntarily by opening a PR to update this document. Maintainers who have been inactive for 12 months may be moved to Emeritus status by a simple majority vote of active maintainers.
+- Review and merge Pull Requests (at least one approval required)
+- Triage issues: label, assign, close duplicates
+- Ensure CI passes before merging
+- Maintain documentation accuracy
+- Monitor and respond to community discussions
 
-## Emeritus Maintainers
+### Contributor
 
-Emeritus maintainers are former maintainers who are no longer actively contributing. They are recognized for their past contributions and may return to active status at any time.
+**Current**: Anyone (with [DCO](DCO) sign-off)
 
-| Name | GitHub |
-|------|--------|
-| — | — |
+- Submit Pull Requests with bug fixes, features, or documentation improvements
+- Report bugs and request features via GitHub Issues
+- Participate in discussions and code reviews
+- Follow the project's coding standards and testing requirements
 
-## Code of Conduct
+## Contributions
 
-This project follows the [Contributor Covenant Code of Conduct v2.1](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). By participating, you agree to uphold this standard. Violations may be reported to the maintainers via the contact information in the repository.
+All contributions require [Developer Certificate of Origin (DCO)](DCO) sign-off. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-## Changes to This Document
+## Releases
 
-Changes to this governance document require a Pull Request and approval from the lead maintainer. Significant changes (e.g., changing the decision-making process) should be announced via a GitHub Issue to allow community input before merging.
+Releases follow [Semantic Versioning](https://semver.org/). The project lead decides release timing and content.
+
+## Bus Factor and Continuity Plan
+
+The project maintains a **bus factor of 2**. At least two people have the access and knowledge required to manage every critical aspect of the project (GitHub org ownership, PyPI publishing, DNS, CI/CD secrets).
+
+The project is designed to continue with minimal interruption if any single contributor becomes unavailable:
+
+- **GitHub Organization**: The repository is owned by the [vstorm-co](https://github.com/vstorm-co) GitHub organization. Multiple team members have **Owner** access, ensuring no single point of failure for repository management, issue triage, and PR merges.
+- **PyPI**: The `fastapi-fullstack` package on PyPI has multiple maintainers with publish rights, allowing releases to continue independently.
+- **DNS / Domain**: The `vstorm.co` domain is registered under the organization, not a personal account.
+- **CI/CD**: GitHub Actions secrets are managed at the organization level. Any organization Owner can update or rotate them.
+- **Forks**: As an MIT-licensed project, the community can fork and continue development at any time without legal barriers.
+
+In the event that the Project Lead becomes permanently unavailable, the remaining organization Owners will appoint a new lead within one week.
+
+## Security
+
+Security vulnerabilities should be reported per [SECURITY.md](SECURITY.md). Critical issues are prioritized above all other work.

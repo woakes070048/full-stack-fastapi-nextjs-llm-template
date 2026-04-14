@@ -26,33 +26,41 @@ class TelegramAdapter(ChannelAdapter):
     def __init__(self) -> None:
         self._polling_tasks: dict[str, asyncio.Task[None]] = {}
 
-    # -------------------------------------------------------------------------
     # Send
-    # -------------------------------------------------------------------------
 
     async def send_message(self, bot_token: str, msg: OutgoingMessage) -> None:
-        """Send a reply back to Telegram."""
+        """Send a reply back to Telegram.
+
+        Tries Markdown parse mode first; falls back to plain text if
+        Telegram rejects the formatting (common with LLM-generated markdown).
+        """
+        from aiogram.exceptions import TelegramBadRequest
+
         bot = Bot(
             token=bot_token,
             default=DefaultBotProperties(parse_mode=ParseMode.MARKDOWN),
         )
+        reply_to = int(msg.reply_to_message_id) if msg.reply_to_message_id else None
         try:
-            await bot.send_message(
-                chat_id=msg.platform_chat_id,
-                text=msg.text,
-                parse_mode=msg.parse_mode,  # type: ignore[arg-type]
-                reply_to_message_id=(
-                    int(msg.reply_to_message_id)
-                    if msg.reply_to_message_id
-                    else None
-                ),
-            )
+            try:
+                await bot.send_message(
+                    chat_id=msg.platform_chat_id,
+                    text=msg.text,
+                    parse_mode=msg.parse_mode,  # type: ignore[arg-type]
+                    reply_to_message_id=reply_to,
+                )
+            except TelegramBadRequest:
+                # Markdown parsing failed — send as plain text
+                await bot.send_message(
+                    chat_id=msg.platform_chat_id,
+                    text=msg.text,
+                    parse_mode=None,
+                    reply_to_message_id=reply_to,
+                )
         finally:
             await bot.session.close()
 
-    # -------------------------------------------------------------------------
     # Polling
-    # -------------------------------------------------------------------------
 
     async def start_polling(self, bot_id: str, bot_token: str) -> None:
         """Start a supervised polling loop for this bot."""
@@ -109,9 +117,7 @@ class TelegramAdapter(ChannelAdapter):
         finally:
             await bot.session.close()
 
-    # -------------------------------------------------------------------------
     # Webhook
-    # -------------------------------------------------------------------------
 
     async def register_webhook(
         self, bot_token: str, url: str, secret: str | None
@@ -147,9 +153,7 @@ class TelegramAdapter(ChannelAdapter):
         # Use hmac.compare_digest for constant-time comparison
         return hmac.compare_digest(received.encode(), secret.encode())
 
-    # -------------------------------------------------------------------------
     # Parsing
-    # -------------------------------------------------------------------------
 
     def parse_incoming(
         self, raw_payload: dict[str, Any], bot_id: str
@@ -197,9 +201,7 @@ class TelegramAdapter(ChannelAdapter):
             message_id=message_id,
         )
 
-    # -------------------------------------------------------------------------
     # Internal update handler
-    # -------------------------------------------------------------------------
 
     async def _handle_update(
         self, message: AiogramMessage, bot_id: str

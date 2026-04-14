@@ -10,9 +10,6 @@ from typing import TypedDict
 logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI
-{%- if cookiecutter.enable_orjson %}
-from fastapi.responses import ORJSONResponse
-{%- endif %}
 {%- if cookiecutter.enable_pagination %}
 from fastapi_pagination import add_pagination
 {%- endif %}
@@ -420,9 +417,6 @@ def create_app() -> FastAPI:
             "identifier": "MIT",
         },
         lifespan=lifespan,
-{%- if cookiecutter.enable_orjson %}
-        default_response_class=ORJSONResponse,
-{%- endif %}
     )
 
 {%- if cookiecutter.enable_logfire %}

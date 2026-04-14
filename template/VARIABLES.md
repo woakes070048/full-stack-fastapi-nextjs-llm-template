@@ -182,7 +182,6 @@ These variables are set automatically by the generator.
 | `enable_websockets` | bool | `false` | Enable WebSocket support | - |
 | `enable_file_storage` | bool | `false` | Enable file upload/storage | - |
 | `enable_cors` | bool | `true` | Enable CORS middleware | - |
-| `enable_orjson` | bool | `true` | Use orjson for faster JSON serialization | - |
 | `enable_webhooks` | bool | `false` | Enable webhook support | - |
 | `enable_conversation_persistence` | bool | `true` | Enable conversation persistence (always enabled) | Always true |
 | `include_example_crud` | bool | `false` | Include example CRUD endpoints (always disabled) | Always false |
@@ -257,7 +256,7 @@ These variables are set automatically by the generator.
 | `use_crewai` | bool | `false` | CrewAI (multi-agent crews) is selected | Computed from `ai_framework` |
 | `use_deepagents` | bool | `false` | DeepAgents (agentic coding, LangChain) is selected | Computed from `ai_framework` |
 | `use_pydantic_deep` | bool | `false` | PydanticDeep (deep agentic coding, Docker sandbox) is selected | Computed from `ai_framework` |
-| `sandbox_backend` | enum | `"docker"` | Agent sandbox environment for DeepAgents/PydanticDeep. Values: `docker`, `daytona`, `state` | Only used when `use_deepagents` or `use_pydantic_deep` is true |
+| `sandbox_backend` | enum | `"state"` | Agent sandbox environment for DeepAgents/PydanticDeep. Values: `state`, `daytona` | Only used when `use_deepagents` or `use_pydantic_deep` is true |
 | `llm_provider` | enum | `"openai"` | LLM provider. Values: `openai`, `anthropic`, `google`, `openrouter` | - |
 | `use_openai` | bool | `true` | OpenAI is selected | Computed from `llm_provider` |
 | `use_anthropic` | bool | `false` | Anthropic is selected | Computed from `llm_provider` |

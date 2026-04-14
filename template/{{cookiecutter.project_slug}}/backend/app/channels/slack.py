@@ -29,9 +29,7 @@ class SlackAdapter(ChannelAdapter):
     def __init__(self) -> None:
         self._socket_tasks: dict[str, asyncio.Task[None]] = {}
 
-    # -------------------------------------------------------------------------
     # Send
-    # -------------------------------------------------------------------------
 
     async def send_message(self, bot_token: str, msg: OutgoingMessage) -> None:
         """Send a reply back to Slack via the Web API."""
@@ -53,9 +51,7 @@ class SlackAdapter(ChannelAdapter):
 
         await client.chat_postMessage(**kwargs)
 
-    # -------------------------------------------------------------------------
     # Polling — Socket Mode (development)
-    # -------------------------------------------------------------------------
 
     async def start_polling(self, bot_id: str, bot_token: str) -> None:
         """Start Slack Socket Mode (equivalent to polling for dev)."""
@@ -130,9 +126,7 @@ class SlackAdapter(ChannelAdapter):
         while True:
             await asyncio.sleep(1)
 
-    # -------------------------------------------------------------------------
     # Webhook
-    # -------------------------------------------------------------------------
 
     async def register_webhook(
         self, bot_token: str, url: str, secret: str | None
@@ -177,9 +171,7 @@ class SlackAdapter(ChannelAdapter):
 
         return hmac.compare_digest(computed, signature)
 
-    # -------------------------------------------------------------------------
     # Parsing
-    # -------------------------------------------------------------------------
 
     def parse_incoming(
         self, raw_payload: dict[str, Any], bot_id: str
@@ -230,9 +222,7 @@ class SlackAdapter(ChannelAdapter):
             message_id=message_ts,
         )
 
-    # -------------------------------------------------------------------------
     # Internal event handler
-    # -------------------------------------------------------------------------
 
     async def _handle_event(self, event: dict[str, Any], bot_id: str) -> None:
         """Handle a Slack event from Socket Mode or webhook."""

@@ -239,14 +239,13 @@ class ProjectConfig(BaseModel):
     enable_file_storage: bool = False
     ai_framework: AIFrameworkType = AIFrameworkType.PYDANTIC_AI
     llm_provider: LLMProviderType = LLMProviderType.OPENAI
-    sandbox_backend: str = "docker"  # "state", "docker", or "daytona" (for DeepAgents/PydanticDeep)
+    sandbox_backend: str = "state"  # "state" or "daytona" (for DeepAgents/PydanticDeep)
     enable_webhooks: bool = False
     enable_langsmith: bool = False
     enable_web_search: bool = False
     use_telegram: bool = False
     use_slack: bool = False
     enable_cors: bool = True
-    enable_orjson: bool = True
 
     # Dev tools
     enable_pytest: bool = True
@@ -485,7 +484,6 @@ class ProjectConfig(BaseModel):
             "websocket_auth_api_key": False,
             "websocket_auth_none": False,
             "enable_cors": self.enable_cors,
-            "enable_orjson": self.enable_orjson,
             # Frontend features (always enabled)
             "enable_i18n": True,
             # Example CRUD (always disabled)

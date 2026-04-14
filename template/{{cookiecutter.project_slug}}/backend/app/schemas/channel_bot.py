@@ -13,9 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.schemas.base import BaseSchema
 
 
-# ---------------------------------------------------------------------------
 # Access policy
-# ---------------------------------------------------------------------------
 
 class AccessPolicy(BaseModel):
     """Bot access control policy."""
@@ -28,9 +26,7 @@ class AccessPolicy(BaseModel):
     denied_message: str = "You are not authorised to use this bot."
 
 
-# ---------------------------------------------------------------------------
 # ChannelBot schemas
-# ---------------------------------------------------------------------------
 
 class ChannelBotCreate(BaseSchema):
     """Schema for creating a channel bot."""
@@ -116,9 +112,7 @@ class ChannelBotList(BaseSchema):
     total: int
 
 
-# ---------------------------------------------------------------------------
 # ChannelIdentity schemas
-# ---------------------------------------------------------------------------
 
 class ChannelIdentityRead(BaseSchema):
     """Schema for reading a channel identity."""
@@ -138,9 +132,7 @@ class ChannelIdentityRead(BaseSchema):
     created_at: datetime
 
 
-# ---------------------------------------------------------------------------
 # ChannelSession schemas
-# ---------------------------------------------------------------------------
 
 class ChannelSessionRead(BaseSchema):
     """Schema for reading a channel session."""

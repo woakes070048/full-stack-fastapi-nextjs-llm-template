@@ -23,7 +23,7 @@ from app.schemas.project import (
 router = APIRouter()
 
 
-# ── Project CRUD ──────────────────────────────────────────────────────────────
+# Project CRUD
 
 
 @router.get("", response_model=ProjectList)
@@ -118,7 +118,7 @@ async def archive_project(
     return await service.archive(project_id, user_id=user.id)
 
 
-# ── Member Management ─────────────────────────────────────────────────────────
+# Member Management
 
 
 @router.get("/{project_id}/members", response_model=ProjectMemberList)

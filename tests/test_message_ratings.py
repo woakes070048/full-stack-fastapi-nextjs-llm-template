@@ -472,14 +472,22 @@ class TestRatingFeatureSecurity:
         )
         return generate_project(config, tmp_path)
 
-    def test_xss_sanitization_in_schemas(self, project_with_ratings: Path) -> None:
-        """Test that XSS sanitization is implemented in schemas."""
+    def test_comment_sanitization_in_schemas(self, project_with_ratings: Path) -> None:
+        """Test that comment sanitization is implemented in schemas.
+
+        Comments are stored raw (HTML escaping happens at render time via
+        React / CSV escaping). The sanitizer only strips control characters,
+        trims whitespace, and enforces a length cap.
+        """
         schema_path = (
             project_with_ratings / "backend" / "app" / "schemas" / "message_rating.py"
         )
         content = schema_path.read_text()
-        assert "html.escape" in content, "XSS sanitization should be present"
-        assert "sanitize" in content.lower() or "strip" in content.lower()
+        assert "_sanitize_comment" in content, "comment sanitizer should be present"
+        assert ".strip()" in content, "whitespace trimming should be present"
+        assert "\\x00" in content or "re.sub" in content, "control-char stripping should be present"
+        # Ensure stored text is NOT html-escaped (would corrupt CSV export and API consumers)
+        assert "html.escape" not in content, "comments must not be HTML-escaped at write time"
 
     def test_conversation_validation_in_service(
         self, project_with_ratings: Path

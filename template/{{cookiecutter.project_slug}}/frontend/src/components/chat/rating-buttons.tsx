@@ -2,10 +2,12 @@
 
 {%- if cookiecutter.use_jwt %}
 import { useState, useCallback, useMemo } from "react";
-import { ThumbsUp, ThumbsDown } from "lucide-react";
+import { Loader2, ThumbsUp, ThumbsDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RatingValue, type UserRating } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,8 @@ export function RatingButtons({
   onRatingChange,
   isAssistant,
 }: RatingButtonsProps) {
+  const t = useTranslations("chat");
+  const tc = useTranslations("common");
   const [showCommentDialog, setShowCommentDialog] = useState(false);
   const [pendingRating, setPendingRating] = useState<RatingValue>(RatingValue.DISLIKE);
   const [comment, setComment] = useState("");
@@ -79,11 +83,11 @@ export function RatingButtons({
 
         const newCounts = calculateNewCounts(currentRating, rating);
         onRatingChange?.({ rating, rating_count: newCounts });
-        toast.success("Thanks for your feedback!");
+        toast.success(t("thankYouFeedback"));
         setShowCommentDialog(false);
         setComment("");
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Failed to submit rating");
+        toast.error(error instanceof Error ? error.message : t("ratingFailed"));
       } finally {
         setIsLoading(false);
       }
@@ -95,7 +99,7 @@ export function RatingButtons({
     async (rating: RatingValue) => {
       // Defensive check: ensure conversationId exists
       if (!conversationId || conversationId === "") {
-        toast.error("Please save the conversation first before rating");
+        toast.error(t("saveConversationToRate"));
         return;
       }
 
@@ -117,7 +121,7 @@ export function RatingButtons({
 
           const newCounts = calculateNewCounts(currentRating, null);
           onRatingChange?.({ rating: null, rating_count: newCounts });
-          toast.success("Rating removed");
+          toast.success(t("ratingRemoved"));
         } catch (error) {
           toast.error(error instanceof Error ? error.message : "Failed to remove rating");
         } finally {
@@ -152,16 +156,20 @@ export function RatingButtons({
           onClick={() => handleRate(RatingValue.LIKE)}
           disabled={isLoading || isMissingConversationId}
           className={cn(
-            "p-1.5 rounded-md transition-colors",
+            "inline-flex items-center p-1.5 rounded-md transition-colors",
             "hover:bg-muted/80",
             "opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
             currentRating === RatingValue.LIKE &&
               "bg-green-500/30 text-green-600 dark:text-green-400",
             isMissingConversationId && "opacity-50 cursor-not-allowed"
           )}
-          title={isMissingConversationId ? "Save conversation first to rate" : "Helpful"}
+          title={isMissingConversationId ? t("saveConversationToRate") : t("helpful")}
         >
-          <ThumbsUp className="h-4 w-4" />
+          {isLoading && currentRating !== RatingValue.DISLIKE ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ThumbsUp className="h-4 w-4" />
+          )}
           {ratingCount && ratingCount.likes > 0 && (
             <span className="ml-1 text-xs">{ratingCount.likes}</span>
           )}
@@ -171,16 +179,20 @@ export function RatingButtons({
           onClick={() => handleRate(RatingValue.DISLIKE)}
           disabled={isLoading || isMissingConversationId}
           className={cn(
-            "p-1.5 rounded-md transition-colors",
+            "inline-flex items-center p-1.5 rounded-md transition-colors",
             "hover:bg-muted/80",
             "opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
             currentRating === RatingValue.DISLIKE &&
               "bg-red-500/30 text-red-600 dark:text-red-400",
             isMissingConversationId && "opacity-50 cursor-not-allowed"
           )}
-          title={isMissingConversationId ? "Save conversation first to rate" : "Not helpful"}
+          title={isMissingConversationId ? t("saveConversationToRate") : t("notHelpful")}
         >
-          <ThumbsDown className="h-4 w-4" />
+          {isLoading && currentRating !== RatingValue.LIKE ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ThumbsDown className="h-4 w-4" />
+          )}
           {ratingCount && ratingCount.dislikes > 0 && (
             <span className="ml-1 text-xs">{ratingCount.dislikes}</span>
           )}
@@ -190,15 +202,15 @@ export function RatingButtons({
       <Dialog open={showCommentDialog} onOpenChange={setShowCommentDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>What went wrong?</DialogTitle>
+            <DialogTitle>{t("whatWentWrong")}</DialogTitle>
             <DialogDescription>
-              Help us improve by optionally letting us know what wasn&apos;t helpful.
+              {t("feedbackHelp")}
             </DialogDescription>
           </DialogHeader>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder="Describe the issue... (optional)"
+            placeholder={t("describeIssue")}
             className="w-full min-h-[100px] p-2 rounded-md border bg-background"
             maxLength={2000}
             autoFocus
@@ -208,27 +220,28 @@ export function RatingButtons({
               {comment.length} / 2000
             </span>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="ghost"
                 onClick={handleCloseDialog}
                 disabled={isLoading}
-                className="px-4 py-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                Cancel
-              </button>
-              <button
+                {tc("cancel")}
+              </Button>
+              <Button
+                variant="outline"
                 onClick={() => submitRating(pendingRating, null)}
                 disabled={isLoading}
-                className="px-4 py-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                Submit without comment
-              </button>
-              <button
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {t("skipComment")}
+              </Button>
+              <Button
                 onClick={() => submitRating(pendingRating, comment.trim() || null)}
                 disabled={isLoading}
-                className="px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                Submit with comment
-              </button>
+                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {tc("submit")}
+              </Button>
             </div>
           </div>
         </DialogContent>

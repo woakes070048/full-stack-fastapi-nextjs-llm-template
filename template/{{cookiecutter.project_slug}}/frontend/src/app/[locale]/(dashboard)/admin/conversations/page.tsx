@@ -4,7 +4,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageSquare, Search, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { ArrowLeft, ChevronLeft, ChevronRight, MessageSquare, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,11 +17,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAdminConversations } from "@/hooks";
 import type { AdminConversation, AdminUser } from "@/types";
 
+const PAGE_SIZE = 50;
+
 export default function AdminConversationsPage() {
+  const t = useTranslations("admin");
   const router = useRouter();
   const {
     conversations,
@@ -38,10 +43,12 @@ export default function AdminConversationsPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("conversations");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [convPage, setConvPage] = useState(0);
+  const [usersPage, setUsersPage] = useState(0);
 
   useEffect(() => {
-    fetchConversations();
-    fetchUsers();
+    fetchConversations({ limit: PAGE_SIZE });
+    fetchUsers({ limit: PAGE_SIZE });
   }, [fetchConversations, fetchUsers]);
 
   useEffect(() => {
@@ -50,13 +57,15 @@ export default function AdminConversationsPage() {
         fetchConversations({
           search: search || undefined,
           user_id: selectedUserId || undefined,
+          skip: convPage * PAGE_SIZE,
+          limit: PAGE_SIZE,
         });
       } else {
-        fetchUsers({ search: search || undefined });
+        fetchUsers({ search: search || undefined, skip: usersPage * PAGE_SIZE, limit: PAGE_SIZE });
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, [search, activeTab, selectedUserId, fetchConversations, fetchUsers]);
+  }, [search, activeTab, selectedUserId, convPage, usersPage, fetchConversations, fetchUsers]);
 
   const handleViewConversation = async (conv: AdminConversation) => {
     await fetchConversationDetail(conv.id);
@@ -66,7 +75,11 @@ export default function AdminConversationsPage() {
     setSelectedUserId(user.id);
     setActiveTab("conversations");
     setSearch("");
+    setConvPage(0);
   };
+
+  const convTotalPages = Math.ceil(conversationsTotal / PAGE_SIZE);
+  const usersTotalPages = Math.ceil(usersTotal / PAGE_SIZE);
 
   // Read-only conversation preview
   if (selectedConversation) {
@@ -82,10 +95,10 @@ export default function AdminConversationsPage() {
           </Button>
           <div>
             <h2 className="font-semibold">
-              {selectedConversation.title || "Untitled"}
+              {selectedConversation.title || t("untitled")}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {selectedConversation.messages.length} messages (read-only)
+              {selectedConversation.messages.length} {t("readOnly")}
             </p>
           </div>
         </div>
@@ -119,17 +132,15 @@ export default function AdminConversationsPage() {
   return (
     <div className="flex h-full flex-col p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Admin: Conversations</h1>
-        <p className="text-muted-foreground">
-          Browse and manage all conversations and users.
-        </p>
+        <h1 className="text-2xl font-bold">{t("conversationsTitle")}</h1>
+        <p className="text-muted-foreground">{t("conversationsDesc")}</p>
       </div>
 
       <div className="flex items-center gap-4 mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search..."
+            placeholder={t("search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -141,7 +152,7 @@ export default function AdminConversationsPage() {
             size="sm"
             onClick={() => setSelectedUserId(null)}
           >
-            Clear user filter
+            {t("clearUserFilter")}
           </Button>
         )}
       </div>
@@ -150,11 +161,11 @@ export default function AdminConversationsPage() {
         <TabsList>
           <TabsTrigger value="conversations">
             <MessageSquare className="mr-2 h-4 w-4" />
-            Conversations ({conversationsTotal})
+            {t("conversations")} ({conversationsTotal})
           </TabsTrigger>
           <TabsTrigger value="users">
             <Users className="mr-2 h-4 w-4" />
-            Users ({usersTotal})
+            {t("users")} ({usersTotal})
           </TabsTrigger>
         </TabsList>
 
@@ -162,104 +173,174 @@ export default function AdminConversationsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Messages</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t("title")}</TableHead>
+                <TableHead>{t("owner")}</TableHead>
+                <TableHead>{t("messages")}</TableHead>
+                <TableHead>{t("created")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {conversations.map((conv) => (
-                <TableRow key={conv.id}>
-                  <TableCell className="font-medium">
-                    {conv.title || "Untitled"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {conv.user_email || "—"}
-                  </TableCell>
-                  <TableCell>{conv.message_count}</TableCell>
-                  <TableCell>
-                    {new Date(conv.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    {conv.is_archived ? (
-                      <Badge variant="secondary">Archived</Badge>
-                    ) : (
-                      <Badge variant="default">Active</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewConversation(conv)}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 6 }).map((__, j) => (
+                        <TableCell key={j}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                : conversations.map((conv) => (
+                    <TableRow key={conv.id}>
+                      <TableCell className="font-medium">
+                        {conv.title || t("untitled")}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {conv.user_email || "—"}
+                      </TableCell>
+                      <TableCell>{conv.message_count}</TableCell>
+                      <TableCell>
+                        {new Date(conv.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {conv.is_archived ? (
+                          <Badge variant="secondary">Archived</Badge>
+                        ) : (
+                          <Badge variant="default">Active</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewConversation(conv)}
+                        >
+                          {t("view")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               {!isLoading && conversations.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No conversations found.
+                    {t("noConversations")}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          {convTotalPages > 1 && (
+            <div className="flex items-center justify-between border-t px-4 py-3">
+              <span className="text-sm text-muted-foreground">
+                Page {convPage + 1} of {convTotalPages} &middot; {conversationsTotal} total
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConvPage((p) => Math.max(0, p - 1))}
+                  disabled={convPage === 0 || isLoading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConvPage((p) => Math.min(convTotalPages - 1, p + 1))}
+                  disabled={convPage >= convTotalPages - 1 || isLoading}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="users" className="flex-1">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Conversations</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
+                <TableHead>{t("email")}</TableHead>
+                <TableHead>{t("name")}</TableHead>
+                <TableHead>{t("conversations")}</TableHead>
+                <TableHead>{t("status")}</TableHead>
+                <TableHead>{t("joined")}</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>{user.full_name || "—"}</TableCell>
-                  <TableCell>{user.conversation_count}</TableCell>
-                  <TableCell>
-                    {user.is_active ? (
-                      <Badge variant="default">Active</Badge>
-                    ) : (
-                      <Badge variant="destructive">Inactive</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleUserClick(user)}
-                    >
-                      View chats
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 6 }).map((__, j) => (
+                        <TableCell key={j}>
+                          <Skeleton className="h-4 w-full" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                : users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell>{user.full_name || "—"}</TableCell>
+                      <TableCell>{user.conversation_count}</TableCell>
+                      <TableCell>
+                        {user.is_active ? (
+                          <Badge variant="default">Active</Badge>
+                        ) : (
+                          <Badge variant="destructive">Inactive</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleUserClick(user)}
+                        >
+                          {t("viewChats")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               {!isLoading && users.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No users found.
+                    {t("noUsers")}
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+          {usersTotalPages > 1 && (
+            <div className="flex items-center justify-between border-t px-4 py-3">
+              <span className="text-sm text-muted-foreground">
+                Page {usersPage + 1} of {usersTotalPages} &middot; {usersTotal} total
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUsersPage((p) => Math.max(0, p - 1))}
+                  disabled={usersPage === 0 || isLoading}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUsersPage((p) => Math.min(usersTotalPages - 1, p + 1))}
+                  disabled={usersPage >= usersTotalPages - 1 || isLoading}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

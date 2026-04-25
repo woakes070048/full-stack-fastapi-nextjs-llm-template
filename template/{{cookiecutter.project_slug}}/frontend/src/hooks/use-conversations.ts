@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { apiClient } from "@/lib/api-client";
 import { useConversationStore, useChatStore } from "@/stores";
 import type {
@@ -153,10 +154,12 @@ export function useConversations() {
       try {
         await apiClient.patch(`/conversations/${id}`, { is_archived: true });
         updateConversation(id, { is_archived: true });
+        toast.success("Conversation archived");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to archive conversation";
         setError(message);
+        toast.error(message);
       }
     },
     [updateConversation, setError]
@@ -167,10 +170,12 @@ export function useConversations() {
       try {
         await apiClient.delete(`/conversations/${id}`);
         removeConversation(id);
+        toast.success("Conversation deleted");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to delete conversation";
         setError(message);
+        toast.error(message);
       }
     },
     [removeConversation, setError]
@@ -181,10 +186,12 @@ export function useConversations() {
       try {
         await apiClient.patch(`/conversations/${id}`, { title });
         updateConversation(id, { title });
+        toast.success("Conversation renamed");
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Failed to rename conversation";
         setError(message);
+        toast.error(message);
       }
     },
     [updateConversation, setError]

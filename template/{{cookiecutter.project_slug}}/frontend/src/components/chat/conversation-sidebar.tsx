@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useConversations } from "@/hooks";
 import { Button, Skeleton } from "@/components/ui";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui";
@@ -48,6 +49,7 @@ function ConversationItem({
   onShare,
 {%- endif %}
 }: ConversationItemProps) {
+  const t = useTranslations("chat");
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(conversation.title || "");
@@ -59,7 +61,7 @@ function ConversationItem({
     setIsEditing(false);
   };
 
-  const displayTitle = conversation.title || "New conversation";
+  const displayTitle = conversation.title || t("newConversation");
 
   return (
     <div
@@ -127,7 +129,7 @@ function ConversationItem({
                 }}
               >
                 <Pencil className="h-4 w-4" />
-                Rename
+                {t("rename")}
               </button>
 {%- if cookiecutter.use_jwt %}
               <button
@@ -139,7 +141,7 @@ function ConversationItem({
                 }}
               >
                 <Share2 className="h-4 w-4" />
-                Share
+                {t("share")}
               </button>
 {%- endif %}
               <button
@@ -151,7 +153,7 @@ function ConversationItem({
                 }}
               >
                 <Archive className="h-4 w-4" />
-                Archive
+                {t("archive")}
               </button>
               <button
                 className="flex w-full items-center gap-2 px-3 py-3 text-sm text-destructive hover:bg-destructive/10 min-h-[44px]"
@@ -162,7 +164,7 @@ function ConversationItem({
                 }}
               >
                 <Trash2 className="h-4 w-4" />
-                Delete
+                {t("delete")}
               </button>
             </div>
           </>
@@ -197,6 +199,7 @@ function ConversationList({
   onNavigate,
   onLoadMore,
 }: ConversationListProps) {
+  const t = useTranslations("chat");
   const activeConversations = (conversations ?? []).filter((c) => !c.is_archived);
 {%- if cookiecutter.use_jwt %}
   const [shareConversationId, setShareConversationId] = useState<string | null>(null);
@@ -222,7 +225,7 @@ function ConversationList({
           onClick={handleNewChat}
         >
           <MessageSquarePlus className="h-4 w-4" />
-          New Chat
+          {t("newChat")}
         </Button>
       </div>
 
@@ -239,8 +242,8 @@ function ConversationList({
         ) : activeConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center text-sm text-muted-foreground">
             <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
-            <p>No conversations yet</p>
-            <p className="text-xs mt-1">Start a new chat to begin</p>
+            <p>{t("noConversations")}</p>
+            <p className="text-xs mt-1">{t("startNewChat")}</p>
           </div>
         ) : (
           <div className="space-y-1">
@@ -282,6 +285,7 @@ interface ConversationSidebarProps {
 }
 
 export function ConversationSidebar({ className }: ConversationSidebarProps) {
+  const t = useTranslations("chat");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { isOpen, close } = useChatSidebarStore();
   const {
@@ -351,7 +355,7 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
         )}
       >
         <div className="flex items-center justify-between border-b px-4 py-3 h-12">
-          <h2 className="font-semibold text-sm">Conversations</h2>
+          <h2 className="font-semibold text-sm">{t("conversations")}</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -367,7 +371,7 @@ export function ConversationSidebar({ className }: ConversationSidebarProps) {
       <Sheet open={isOpen} onOpenChange={close}>
         <SheetContent side="left" className="w-80 p-0">
           <SheetHeader className="h-12 px-4">
-            <SheetTitle>Conversations</SheetTitle>
+            <SheetTitle>{t("conversations")}</SheetTitle>
             <SheetClose onClick={close} />
           </SheetHeader>
           <div className="flex flex-col h-[calc(100%-48px)]">

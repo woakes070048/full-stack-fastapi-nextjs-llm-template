@@ -3,7 +3,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Link2, Trash2, UserPlus } from "lucide-react";
+import { Copy, Link2, Loader2, Trash2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 import { useConversationShares } from "@/hooks";
 import type { ConversationShare } from "@/types";
 
@@ -35,6 +37,7 @@ export function ShareDialog({
   open,
   onOpenChange,
 }: ShareDialogProps) {
+  const t = useTranslations("chat");
   const {
     shares,
     isLoading,
@@ -46,6 +49,9 @@ export function ShareDialog({
   const [permission, setPermission] = useState<"view" | "edit">("view");
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && conversationId) {
@@ -55,18 +61,23 @@ export function ShareDialog({
 
   const handleShare = async () => {
     if (!email.trim()) return;
+    setIsSharing(true);
     try {
       await shareConversation(conversationId, {
         shared_with: email.trim(),
         permission,
       });
       setEmail("");
-    } catch {
-      // error handled in hook
+      toast.success(t("conversationShared"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("failedToShare"));
+    } finally {
+      setIsSharing(false);
     }
   };
 
   const handleGenerateLink = async () => {
+    setIsGeneratingLink(true);
     try {
       const share = await shareConversation(conversationId, {
         generate_link: true,
@@ -75,9 +86,12 @@ export function ShareDialog({
       if (share?.share_token) {
         const url = `${window.location.origin}/shared/${share.share_token}`;
         setShareLink(url);
+        toast.success(t("linkGenerated"));
       }
-    } catch {
-      // error handled in hook
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("failedToGenerateLink"));
+    } finally {
+      setIsGeneratingLink(false);
     }
   };
 
@@ -85,6 +99,7 @@ export function ShareDialog({
     if (shareLink) {
       try {
         await navigator.clipboard.writeText(shareLink);
+        toast.success(t("copyLink"));
       } catch {
         // Fallback for non-secure contexts
       }
@@ -94,16 +109,24 @@ export function ShareDialog({
   };
 
   const handleRevoke = async (share: ConversationShare) => {
-    await revokeShare(conversationId, share.id);
+    setRevokingId(share.id);
+    try {
+      await revokeShare(conversationId, share.id);
+      toast.success(t("accessRevoked"));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("failedToRevoke"));
+    } finally {
+      setRevokingId(null);
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Share Conversation</DialogTitle>
+          <DialogTitle>{t("shareConversation")}</DialogTitle>
           <DialogDescription>
-            Share this conversation with other users or generate a public link.
+            {t("shareDescription")}
           </DialogDescription>
         </DialogHeader>
 
@@ -111,7 +134,7 @@ export function ShareDialog({
           {/* Share with user */}
           <div className="flex gap-2">
             <Input
-              placeholder="User ID or email"
+              placeholder={t("userIdOrEmail")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleShare()}
@@ -128,8 +151,12 @@ export function ShareDialog({
                 <SelectItem value="edit">Edit</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleShare} disabled={isLoading} size="icon">
-              <UserPlus className="h-4 w-4" />
+            <Button onClick={handleShare} disabled={isLoading || isSharing} size="icon">
+              {isSharing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4" />
+              )}
             </Button>
           </div>
 
@@ -138,11 +165,15 @@ export function ShareDialog({
             <Button
               variant="outline"
               onClick={handleGenerateLink}
-              disabled={isLoading}
+              disabled={isLoading || isGeneratingLink}
               className="flex-1"
             >
-              <Link2 className="mr-2 h-4 w-4" />
-              Generate share link
+              {isGeneratingLink ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Link2 className="mr-2 h-4 w-4" />
+              )}
+              {t("generateShareLink")}
             </Button>
             {shareLink && (
               <Button
@@ -163,7 +194,7 @@ export function ShareDialog({
           {/* Current shares */}
           {shares.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Shared with</p>
+              <p className="text-sm font-medium">{t("sharedWith")}</p>
               {shares.map((share) => (
                 <div
                   key={share.id}
@@ -182,9 +213,14 @@ export function ShareDialog({
                     variant="ghost"
                     size="icon"
                     onClick={() => handleRevoke(share)}
+                    disabled={revokingId === share.id}
                     className="h-8 w-8"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    {revokingId === share.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               ))}

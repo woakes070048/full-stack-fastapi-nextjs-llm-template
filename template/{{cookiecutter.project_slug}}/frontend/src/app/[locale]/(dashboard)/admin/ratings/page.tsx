@@ -2,6 +2,7 @@
 
 {%- if cookiecutter.use_jwt %}
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores";
 import type {
   MessageRatingListResponse,
@@ -26,6 +27,7 @@ const PAGE_SIZE = 50;
 type RatingFilter = "all" | "positive" | "negative";
 
 export default function AdminRatingsPage() {
+  const t = useTranslations("admin");
   const { user } = useAuthStore();
   const [summary, setSummary] = useState<RatingSummary | null>(null);
   const [ratings, setRatings] = useState<MessageRatingListResponse | null>(null);
@@ -102,7 +104,7 @@ export default function AdminRatingsPage() {
   if (user?.role !== "admin") {
     return (
       <div className="container mx-auto py-8">
-        <div className="text-center text-muted-foreground">Access denied</div>
+        <div className="text-center text-muted-foreground">{t("accessDenied")}</div>
       </div>
     );
   }
@@ -110,7 +112,7 @@ export default function AdminRatingsPage() {
   if (loading && !summary && !error) {
     return (
       <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-8">Response Ratings</h1>
+        <h1 className="text-3xl font-bold mb-8">{t("ratingsTitle")}</h1>
         {/* Summary Cards Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -150,32 +152,32 @@ export default function AdminRatingsPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8">Response Ratings</h1>
+      <h1 className="text-3xl font-bold mb-8">{t("ratingsTitle")}</h1>
 
       {/* Summary Cards */}
       {summary && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card p-4 rounded-lg border">
             <div className="text-2xl font-bold">{summary.total_ratings}</div>
-            <div className="text-sm text-muted-foreground">Total Ratings</div>
+            <div className="text-sm text-muted-foreground">{t("totalRatings")}</div>
           </div>
           <div className="bg-card p-4 rounded-lg border">
             <div className="text-2xl font-bold text-green-600">
               {summary.like_count}
             </div>
-            <div className="text-sm text-muted-foreground">Likes</div>
+            <div className="text-sm text-muted-foreground">{t("likes")}</div>
           </div>
           <div className="bg-card p-4 rounded-lg border">
             <div className="text-2xl font-bold text-red-600">
               {summary.dislike_count}
             </div>
-            <div className="text-sm text-muted-foreground">Dislikes</div>
+            <div className="text-sm text-muted-foreground">{t("dislikes")}</div>
           </div>
           <div className="bg-card p-4 rounded-lg border">
             <div className="text-2xl font-bold">
               {summary.average_rating.toFixed(2)}
             </div>
-            <div className="text-sm text-muted-foreground">Average Rating</div>
+            <div className="text-sm text-muted-foreground">{t("averageRating")}</div>
           </div>
         </div>
       )}
@@ -183,7 +185,7 @@ export default function AdminRatingsPage() {
       {/* Chart */}
       {summary && summary.ratings_by_day.length > 0 && (
         <div className="bg-card p-6 rounded-lg border mb-8">
-          <h2 className="text-xl font-semibold mb-4">Ratings Over Time</h2>
+          <h2 className="text-xl font-semibold mb-4">{t("ratingsOverTime")}</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={summary.ratings_by_day}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -204,9 +206,9 @@ export default function AdminRatingsPage() {
           onChange={(e) => setFilter(e.target.value as RatingFilter)}
           className="px-3 py-2 rounded-md border bg-background"
         >
-          <option value="all">All Ratings</option>
-          <option value="positive">Likes Only</option>
-          <option value="negative">Dislikes Only</option>
+          <option value="all">{t("allRatings")}</option>
+          <option value="positive">{t("likesOnly")}</option>
+          <option value="negative">{t("dislikesOnly")}</option>
         </select>
         <label className="flex items-center gap-2">
           <input
@@ -215,7 +217,7 @@ export default function AdminRatingsPage() {
             onChange={(e) => setCommentsOnly(e.target.checked)}
             className="rounded"
           />
-          With comments only
+          {t("withCommentsOnly")}
         </label>
         <div className="flex items-center gap-2 ml-auto">
           <select
@@ -231,7 +233,7 @@ export default function AdminRatingsPage() {
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Download className="h-4 w-4" />
-            Export
+            {t("export")}
           </button>
         </div>
       </div>
@@ -241,12 +243,12 @@ export default function AdminRatingsPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="text-left p-4">Date</th>
-              <th className="text-left p-4">Rating</th>
-              <th className="text-left p-4">Comment</th>
-              <th className="text-left p-4">Message</th>
-              <th className="text-left p-4">User</th>
-              <th className="text-left p-4">Actions</th>
+              <th className="text-left p-4">{t("date")}</th>
+              <th className="text-left p-4">{t("rating")}</th>
+              <th className="text-left p-4">{t("comment")}</th>
+              <th className="text-left p-4">{t("message")}</th>
+              <th className="text-left p-4">{t("user")}</th>
+              <th className="text-left p-4">{t("actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -275,7 +277,7 @@ export default function AdminRatingsPage() {
                       href={`/chat?id=${rating.conversation_id}`}
                       className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                     >
-                      View conversation
+                      {t("viewConversation")}
                       <ExternalLink className="h-3 w-3" />
                     </Link>
                   )}

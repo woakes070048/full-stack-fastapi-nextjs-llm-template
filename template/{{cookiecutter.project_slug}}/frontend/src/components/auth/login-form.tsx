@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui";
@@ -14,6 +15,7 @@ import { GoogleIcon } from "@/components/icons/google-icon";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function LoginForm() {
+  const t = useTranslations("auth");
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,7 +35,7 @@ export function LoginForm() {
 
     try {
       await login({ email, password });
-      toast.success("Logged in successfully");
+      toast.success(t("loginSuccess"));
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Login failed. Please try again.";
       setError(message);
@@ -54,12 +56,12 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl text-center">Login</CardTitle>
+        <CardTitle className="text-2xl text-center">{t("login")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
               type="email"
@@ -72,11 +74,11 @@ export function LoginForm() {
               className={emailTouched && email && !emailValid ? "border-destructive" : ""}
             />
             {emailTouched && email && !emailValid && (
-              <p className="text-destructive text-xs">Please enter a valid email address</p>
+              <p className="text-destructive text-xs">{t("emailRequired")}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("password")}</Label>
             <Input
               id="password"
               type="password"
@@ -90,7 +92,7 @@ export function LoginForm() {
             <p className="text-sm text-destructive">{error}</p>
           )}
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
+            {isLoading ? t("loggingIn") : t("login")}
           </Button>
         </form>
 
@@ -101,7 +103,7 @@ export function LoginForm() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            <span className="bg-card px-2 text-muted-foreground">{t("orContinueWith")}</span>
           </div>
         </div>
 
@@ -113,15 +115,15 @@ export function LoginForm() {
           disabled={isOAuthLoading || isLoading}
         >
           <GoogleIcon className="mr-2 h-4 w-4" />
-          {isOAuthLoading ? "Redirecting..." : "Continue with Google"}
+          {isOAuthLoading ? t("redirecting") : t("continueWithGoogle")}
         </Button>
 {%- endif %}
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          {t("noAccount")}{" "}
           <Link href={ROUTES.REGISTER} className="text-primary hover:underline">
-            Register
+            {t("register")}
           </Link>
         </p>
       </CardFooter>

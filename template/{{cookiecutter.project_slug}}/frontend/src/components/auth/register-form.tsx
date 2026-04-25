@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks";
 import { Button, Input, Label, Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui";
@@ -31,6 +32,7 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
 }
 
 export function RegisterForm() {
+  const t = useTranslations("auth");
   const router = useRouter();
   const { register } = useAuth();
   const [email, setEmail] = useState("");
@@ -73,7 +75,7 @@ export function RegisterForm() {
 
     try {
       await register({ email, password, name: name || undefined });
-      toast.success("Account created! Please log in.");
+      toast.success(t("registerSuccess"));
       router.push(ROUTES.LOGIN + "?registered=true");
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Registration failed. Please try again.";
@@ -96,7 +98,7 @@ export function RegisterForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl text-center">Create Account</CardTitle>
+        <CardTitle className="text-2xl text-center">{t("createAccount")}</CardTitle>
       </CardHeader>
       <CardContent>
 {%- if cookiecutter.enable_oauth_google %}
@@ -108,7 +110,7 @@ export function RegisterForm() {
           disabled={isOAuthLoading || isLoading}
         >
           <GoogleIcon className="mr-2 h-4 w-4" />
-          {isOAuthLoading ? "Redirecting..." : "Sign up with Google"}
+          {isOAuthLoading ? t("redirecting") : t("signUpWithGoogle")}
         </Button>
 
         <div className="relative mb-6">
@@ -116,14 +118,14 @@ export function RegisterForm() {
             <span className="w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">Or register with email</span>
+            <span className="bg-card px-2 text-muted-foreground">{t("orRegisterWith")}</span>
           </div>
         </div>
 {%- endif %}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name (optional)</Label>
+            <Label htmlFor="name">{t("nameOptional")}</Label>
             <Input
               id="name"
               type="text"
@@ -134,7 +136,7 @@ export function RegisterForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("email")}</Label>
             <Input
               id="email"
               type="email"
@@ -147,11 +149,11 @@ export function RegisterForm() {
               className={emailTouched && email && !emailValid ? "border-destructive" : ""}
             />
             {emailTouched && email && !emailValid && (
-              <p className="text-destructive text-xs">Please enter a valid email address</p>
+              <p className="text-destructive text-xs">{t("emailRequired")}</p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{t("password")}</Label>
             <Input
               id="password"
               type="password"
@@ -187,7 +189,7 @@ export function RegisterForm() {
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -199,7 +201,7 @@ export function RegisterForm() {
             />
             {confirmPassword && (
               <p className={`flex items-center gap-1 text-xs ${passwordsMatch ? "text-green-500" : "text-destructive"}`}>
-                {passwordsMatch ? <><Check className="h-3 w-3" />Passwords match</> : <><X className="h-3 w-3" />Passwords do not match</>}
+                {passwordsMatch ? <><Check className="h-3 w-3" />{t("confirmPassword")} ✓</> : <><X className="h-3 w-3" />{t("passwordMismatch")}</>}
               </p>
             )}
           </div>
@@ -207,15 +209,15 @@ export function RegisterForm() {
             <p className="text-sm text-destructive">{error}</p>
           )}
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creating account..." : "Register"}
+            {isLoading ? t("creatingAccount") : t("register")}
           </Button>
         </form>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("hasAccount")}{" "}
           <Link href={ROUTES.LOGIN} className="text-primary hover:underline">
-            Login
+            {t("login")}
           </Link>
         </p>
       </CardFooter>

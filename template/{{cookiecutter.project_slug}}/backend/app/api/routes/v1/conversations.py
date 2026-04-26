@@ -19,7 +19,7 @@ from uuid import UUID
 from typing import Any
 {%- endif %}
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
 
 {%- if cookiecutter.use_mongodb %}
@@ -289,6 +289,7 @@ async def rate_message(
     data: MessageRatingCreate,
     rating_service: MessageRatingSvc,
     current_user: CurrentUser,
+    response: Response,
 ) -> Any:
     """Rate an assistant message.
 
@@ -301,14 +302,16 @@ async def rate_message(
         data: Rating value (1 for like, -1 for dislike) and optional comment
 
     Returns:
-        200 OK
+        201 Created for new rating, 200 OK when updating existing rating.
     """
-    rating, _ = await rating_service.rate_message(
+    rating, is_new = await rating_service.rate_message(
         conversation_id=conversation_id,
         message_id=message_id,
         user_id=current_user.id,
         data=data,
     )
+    if is_new:
+        response.status_code = status.HTTP_201_CREATED
     return rating
 
 
@@ -571,6 +574,7 @@ def rate_message(
     data: MessageRatingCreate,
     rating_service: MessageRatingSvc,
     current_user: CurrentUser,
+    response: Response,
 ) -> Any:
     """Rate an assistant message.
 
@@ -583,14 +587,16 @@ def rate_message(
         data: Rating value (1 for like, -1 for dislike) and optional comment
 
     Returns:
-        200 OK
+        201 Created for new rating, 200 OK when updating existing rating.
     """
-    rating, _ = rating_service.rate_message(
+    rating, is_new = rating_service.rate_message(
         conversation_id=conversation_id,
         message_id=message_id,
         user_id=str(current_user.id),
         data=data,
     )
+    if is_new:
+        response.status_code = status.HTTP_201_CREATED
     return rating
 
 
@@ -842,6 +848,7 @@ async def rate_message(
     data: MessageRatingCreate,
     rating_service: MessageRatingSvc,
     current_user: CurrentUser,
+    response: Response,
 ) -> Any:
     """Rate an assistant message.
 
@@ -854,14 +861,16 @@ async def rate_message(
         data: Rating value (1 for like, -1 for dislike) and optional comment
 
     Returns:
-        200 OK
+        201 Created for new rating, 200 OK when updating existing rating.
     """
-    rating, _ = await rating_service.rate_message(
+    rating, is_new = await rating_service.rate_message(
         conversation_id=conversation_id,
         message_id=message_id,
         user_id=str(current_user.id),
         data=data,
     )
+    if is_new:
+        response.status_code = status.HTTP_201_CREATED
     return rating
 
 

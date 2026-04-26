@@ -56,15 +56,51 @@ def cli(ctx: click.Context) -> None:
     help="Use default values without prompts",
 )
 @click.option("--name", type=str, help="Project name (for --no-input mode)")
-def new(output: Path | None, no_input: bool, name: str | None) -> None:
+@click.option(
+    "--minimal",
+    is_flag=True,
+    default=False,
+    help="Skip wizard — ask only for project name and use minimal defaults (SQLite, no Docker/Redis/CI)",
+)
+def new(output: Path | None, no_input: bool, name: str | None, minimal: bool) -> None:
     """Create a new FastAPI project interactively."""
     try:
-        if no_input:
+        if no_input or minimal:
             if not name:
-                console.print("[red]Error:[/] --name is required when using --no-input")
-                raise SystemExit(1)
+                if minimal:
+                    import questionary
 
-            config = ProjectConfig(project_name=name, background_tasks=BackgroundTaskType.NONE)
+                    name = questionary.text(
+                        "Project name:",
+                        validate=lambda v: bool(v) or "Name cannot be empty",
+                    ).ask()
+                    if not name:
+                        console.print("\n[yellow]Cancelled.[/]")
+                        return
+                else:
+                    console.print("[red]Error:[/] --name is required when using --no-input")
+                    raise SystemExit(1)
+
+            if minimal:
+                config = ProjectConfig(
+                    project_name=name,
+                    database=DatabaseType.SQLITE,
+                    enable_logfire=False,
+                    enable_redis=False,
+                    enable_caching=False,
+                    enable_rate_limiting=False,
+                    enable_pagination=False,
+                    enable_admin_panel=False,
+                    enable_docker=False,
+                    enable_kubernetes=False,
+                    background_tasks=BackgroundTaskType.NONE,
+                    ci_type=CIType.NONE,
+                )
+                console.print(f"[cyan]Creating minimal project:[/] {name}")
+                console.print("[dim]SQLite · no Docker · no Redis · no CI[/]")
+                console.print()
+            else:
+                config = ProjectConfig(project_name=name, background_tasks=BackgroundTaskType.NONE)
         else:
             config = run_interactive_prompts()
             show_summary(config)

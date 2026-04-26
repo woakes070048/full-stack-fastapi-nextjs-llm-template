@@ -8,7 +8,8 @@ from typing import Annotated, Any
 from uuid import UUID
 {%- endif %}
 
-from fastapi import APIRouter, Depends, UploadFile, File, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 {%- if cookiecutter.enable_pagination %}
 from fastapi_pagination import Page
 {%- endif %}
@@ -20,6 +21,7 @@ from app.api.deps import (
 )
 from app.db.models.user import User, UserRole
 from app.schemas.user import UserRead, UserUpdate
+from app.services.file_storage import get_file_storage
 
 router = APIRouter()
 
@@ -61,13 +63,11 @@ async def update_current_user(
 
 @router.post("/me/avatar", response_model=UserRead)
 async def upload_avatar(
+    user_service: UserSvc,
+    current_user: Annotated[User, Depends(get_current_user)],
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    user_service: UserSvc = None,  # type: ignore[assignment]
 ) -> Any:
     """Upload or replace avatar image for the current user."""
-    from fastapi import HTTPException
-
     data = await file.read()
     try:
         user = await user_service.update_avatar(
@@ -81,9 +81,6 @@ async def upload_avatar(
 @router.get("/avatar/{user_id}")
 async def get_avatar(user_id: UUID, user_service: UserSvc) -> Any:
     """Get user avatar image."""
-    from fastapi import HTTPException
-    from fastapi.responses import FileResponse
-    from app.services.file_storage import get_file_storage
     user = await user_service.get_by_id(user_id)
     if not user.avatar_url:
         raise HTTPException(status_code=404, detail="No avatar set")
@@ -114,8 +111,8 @@ async def read_users(
 async def read_users(
     user_service: UserSvc,
     current_user: Annotated[User, Depends(RoleChecker(UserRole.ADMIN))],
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Items to skip"),
+    limit: int = Query(100, ge=1, le=200, description="Max items to return"),
 ) -> Any:
     """Get all users (admin only)."""
     users = await user_service.get_multi(skip=skip, limit=limit)
@@ -205,8 +202,8 @@ async def update_current_user(
 async def read_users(
     user_service: UserSvc,
     current_user: Annotated[User, Depends(RoleChecker(UserRole.ADMIN))],
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Items to skip"),
+    limit: int = Query(100, ge=1, le=200, description="Max items to return"),
 ) -> Any:
     """Get all users (admin only)."""
     users = await user_service.get_multi(skip=skip, limit=limit)
@@ -308,8 +305,8 @@ def read_users(
 def read_users(
     user_service: UserSvc,
     current_user: Annotated[User, Depends(RoleChecker(UserRole.ADMIN))],
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0, description="Items to skip"),
+    limit: int = Query(100, ge=1, le=200, description="Max items to return"),
 ) -> Any:
     """Get all users (admin only)."""
     users = user_service.get_multi(skip=skip, limit=limit)

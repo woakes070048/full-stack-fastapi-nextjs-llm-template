@@ -7,11 +7,13 @@ from typing import Any
 from uuid import UUID
 {%- endif %}
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
 from app.api.deps import CurrentUser, FileUploadSvc
-from app.schemas.file import FileUploadResponse, FileInfo
+from app.core.exceptions import NotFoundError
+from app.schemas.file import FileInfo, FileUploadResponse
+from app.services.file_storage import get_file_storage
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,9 @@ router = APIRouter(prefix="/files", tags=["files"])
 
 @router.post("/upload", response_model=FileUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_file(
+    file_upload_svc: FileUploadSvc,
+    current_user: CurrentUser,
     file: UploadFile = File(...),
-    file_upload_svc: FileUploadSvc = None,  # type: ignore[assignment]
-    current_user: CurrentUser = None,  # type: ignore[assignment]
 ) -> Any:
     """Upload a file for use in chat."""
     data = await file.read()
@@ -36,8 +38,6 @@ async def upload_file(
 {%- else %}
     parsed_content = file_upload_svc.parse_content(data, file_type, file.content_type or "")
 {%- endif %}
-
-    from app.services.file_storage import get_file_storage
 
     storage = get_file_storage()
     storage_path = await storage.save(str(current_user.id), file.filename or "unknown", data)
@@ -69,17 +69,16 @@ async def upload_file(
 {%- if cookiecutter.use_postgresql %}
 async def download_file(
     file_id: UUID,
+    file_upload_svc: FileUploadSvc,
+    current_user: CurrentUser,
 {%- else %}
 def download_file(
     file_id: str,
+    file_upload_svc: FileUploadSvc,
+    current_user: CurrentUser,
 {%- endif %}
-    file_upload_svc: FileUploadSvc = None,  # type: ignore[assignment]
-    current_user: CurrentUser = None,  # type: ignore[assignment]
 ) -> Any:
     """Download a file. Only the owner can access their files."""
-    from app.core.exceptions import NotFoundError
-    from app.services.file_storage import get_file_storage
-
     try:
 {%- if cookiecutter.use_postgresql %}
         chat_file = await file_upload_svc.get_user_file(file_id, current_user.id)
@@ -101,16 +100,16 @@ def download_file(
 {%- if cookiecutter.use_postgresql %}
 async def get_file_info(
     file_id: UUID,
+    file_upload_svc: FileUploadSvc,
+    current_user: CurrentUser,
 {%- else %}
 def get_file_info(
     file_id: str,
+    file_upload_svc: FileUploadSvc,
+    current_user: CurrentUser,
 {%- endif %}
-    file_upload_svc: FileUploadSvc = None,  # type: ignore[assignment]
-    current_user: CurrentUser = None,  # type: ignore[assignment]
 ) -> Any:
     """Get file metadata. Only the owner can access."""
-    from app.core.exceptions import NotFoundError
-
     try:
 {%- if cookiecutter.use_postgresql %}
         chat_file = await file_upload_svc.get_user_file(file_id, current_user.id)

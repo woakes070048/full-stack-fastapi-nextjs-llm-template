@@ -5,10 +5,10 @@ from datetime import datetime
 from uuid import UUID
 {%- endif %}
 
-from pydantic import BaseModel
+from app.schemas.base import BaseSchema
 
 
-class FileUploadResponse(BaseModel):
+class FileUploadResponse(BaseSchema):
     """Response after successful file upload."""
 
 {%- if cookiecutter.use_postgresql %}

@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundError
 from app.db.models.sync_log import SyncLog
 from app.db.models.sync_source import SyncSource
+from app.rag.connectors import CONNECTOR_REGISTRY
+from app.repositories import sync_log as sync_log_repo
 from app.repositories import sync_source as sync_source_repo
 from app.schemas.sync_source import SyncSourceCreate, SyncSourceUpdate
 
@@ -53,8 +55,6 @@ class SyncSourceService:
         Raises:
             ValueError: If connector type is unknown or config is invalid.
         """
-        from app.rag.connectors import CONNECTOR_REGISTRY
-
         if data.connector_type not in CONNECTOR_REGISTRY:
             raise ValueError(f"Unknown connector type: {data.connector_type}")
 
@@ -87,7 +87,8 @@ class SyncSourceService:
         source = await sync_source_repo.update(
             self.db, UUID(source_id), **updates
         )
-        assert source is not None  # verified above via get_source
+        if source is None:
+            raise NotFoundError(message="Sync source not found", details={"source_id": source_id})
         return source
 
     async def delete_source(self, source_id: str) -> None:
@@ -106,8 +107,6 @@ class SyncSourceService:
             NotFoundError: If sync source does not exist.
         """
         source = await self.get_source(source_id)
-
-        from app.repositories import sync_log as sync_log_repo
 
         return await sync_log_repo.create(
             self.db,
@@ -140,6 +139,7 @@ Contains business logic for managing RAG sync source configurations
 and triggering sync operations.
 """
 
+import asyncio
 from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
@@ -147,6 +147,8 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError
 from app.db.models.sync_log import SyncLog
 from app.db.models.sync_source import SyncSource
+from app.rag.connectors import CONNECTOR_REGISTRY
+from app.repositories import sync_log as sync_log_repo
 from app.repositories import sync_source as sync_source_repo
 from app.schemas.sync_source import SyncSourceCreate, SyncSourceUpdate
 
@@ -186,8 +188,6 @@ class SyncSourceService:
         Raises:
             ValueError: If connector type is unknown or config is invalid.
         """
-        from app.rag.connectors import CONNECTOR_REGISTRY
-
         if data.connector_type not in CONNECTOR_REGISTRY:
             raise ValueError(f"Unknown connector type: {data.connector_type}")
 
@@ -195,8 +195,6 @@ class SyncSourceService:
         connector = connector_cls()
 
         # validate_config is async on the base class; for SQLite we run it synchronously
-        import asyncio
-
         loop = asyncio.new_event_loop()
         try:
             is_valid, error = loop.run_until_complete(
@@ -229,7 +227,8 @@ class SyncSourceService:
         self.get_source(source_id)  # verify exists
         updates = data.model_dump(exclude_unset=True)
         source = sync_source_repo.update(self.db, source_id, **updates)
-        assert source is not None  # verified above via get_source
+        if source is None:
+            raise NotFoundError(message="Sync source not found", details={"source_id": source_id})
         return source
 
     def delete_source(self, source_id: str) -> None:
@@ -248,8 +247,6 @@ class SyncSourceService:
             NotFoundError: If sync source does not exist.
         """
         source = self.get_source(source_id)
-
-        from app.repositories import sync_log as sync_log_repo
 
         return sync_log_repo.create(
             self.db,

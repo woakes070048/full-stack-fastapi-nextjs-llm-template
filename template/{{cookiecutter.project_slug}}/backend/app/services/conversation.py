@@ -791,10 +791,15 @@ class ConversationService:
             and conversation.user_id is not None
             and str(conversation.user_id) != str(user_id)
         ):
-            raise NotFoundError(
-                message="Conversation not found",
-                details={"conversation_id": conversation_id},
+            # Not the owner — check if user has a share granting access
+            share = conversation_share_repo.get_share(
+                self.db, conversation_id, user_id
             )
+            if not share:
+                raise NotFoundError(
+                    message="Conversation not found",
+                    details={"conversation_id": conversation_id},
+                )
 {%- endif %}
         return conversation
 

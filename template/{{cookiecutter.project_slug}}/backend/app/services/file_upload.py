@@ -118,10 +118,11 @@ class FileUploadService:
                 temp_path = f.name
             try:
                 client = AsyncLlamaCloud(api_key=settings.LLAMAPARSE_API_KEY)
-                result = await client.parsing.upload_and_parse(
-                    file=open(temp_path, "rb"),
-                    tier=settings.LLAMAPARSE_TIER,
-                )
+                with open(temp_path, "rb") as pdf_file:
+                    result = await client.parsing.upload_and_parse(
+                        file=pdf_file,
+                        tier=settings.LLAMAPARSE_TIER,
+                    )
                 return "\n\n".join(p.markdown for p in result.pages) if result.pages else None
             finally:
                 os.unlink(temp_path)
@@ -383,10 +384,11 @@ class FileUploadService:
                 async def _parse():
                     from llama_cloud import AsyncLlamaCloud
                     client = AsyncLlamaCloud(api_key=settings.LLAMAPARSE_API_KEY)
-                    result = await client.parsing.upload_and_parse(
-                        file=open(temp_path, "rb"),
-                        tier=settings.LLAMAPARSE_TIER,
-                    )
+                    with open(temp_path, "rb") as pdf_file:
+                        result = await client.parsing.upload_and_parse(
+                            file=pdf_file,
+                            tier=settings.LLAMAPARSE_TIER,
+                        )
                     return "\n\n".join(p.markdown for p in result.pages) if result.pages else None
 
                 return asyncio.run(_parse())

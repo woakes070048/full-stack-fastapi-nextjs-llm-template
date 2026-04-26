@@ -31,12 +31,10 @@ from pydantic_ai.messages import (
 )
 
 from app.agents.assistant import Deps, get_agent
+from app.core.config import settings
 {%- if cookiecutter.websocket_auth_jwt %}
 from app.api.deps import get_current_user_ws
 from app.db.models.user import User
-{%- endif %}
-{%- if cookiecutter.websocket_auth_api_key %}
-from app.core.config import settings
 {%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.db.session import get_db_context{% if cookiecutter.use_sqlite %}, get_db_session
@@ -56,7 +54,6 @@ router = APIRouter()
 @router.get("/agent/models")
 async def list_models() -> dict[str, Any]:
     """Return available LLM models and the current default."""
-    from app.core.config import settings
     return {
         "default": settings.AI_MODEL,
         "models": settings.AI_AVAILABLE_MODELS,
@@ -632,9 +629,7 @@ from app.agents.langchain_assistant import AgentContext, get_agent
 from app.api.deps import get_current_user_ws
 from app.db.models.user import User
 {%- endif %}
-{%- if cookiecutter.websocket_auth_api_key %}
 from app.core.config import settings
-{%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.db.session import get_db_context{% if cookiecutter.use_sqlite %}, get_db_session
 from contextlib import contextmanager{% endif %}
@@ -653,7 +648,6 @@ router = APIRouter()
 @router.get("/agent/models")
 async def list_models() -> dict[str, Any]:
     """Return available LLM models and the current default."""
-    from app.core.config import settings
     return {
         "default": settings.AI_MODEL,
         "models": settings.AI_AVAILABLE_MODELS,
@@ -1128,9 +1122,7 @@ from app.agents.langgraph_assistant import AgentContext, get_agent
 from app.api.deps import get_current_user_ws
 from app.db.models.user import User
 {%- endif %}
-{%- if cookiecutter.websocket_auth_api_key %}
 from app.core.config import settings
-{%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.db.session import get_db_context{% if cookiecutter.use_sqlite %}, get_db_session
 from contextlib import contextmanager{% endif %}
@@ -1149,7 +1141,6 @@ router = APIRouter()
 @router.get("/agent/models")
 async def list_models() -> dict[str, Any]:
     """Return available LLM models and the current default."""
-    from app.core.config import settings
     return {
         "default": settings.AI_MODEL,
         "models": settings.AI_AVAILABLE_MODELS,
@@ -1626,9 +1617,7 @@ from app.agents.crewai_assistant import CrewContext, get_crew
 from app.api.deps import get_current_user_ws
 from app.db.models.user import User
 {%- endif %}
-{%- if cookiecutter.websocket_auth_api_key %}
 from app.core.config import settings
-{%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.db.session import get_db_context{% if cookiecutter.use_sqlite %}, get_db_session
 from contextlib import contextmanager{% endif %}
@@ -1647,7 +1636,6 @@ router = APIRouter()
 @router.get("/agent/models")
 async def list_models() -> dict[str, Any]:
     """Return available LLM models and the current default."""
-    from app.core.config import settings
     return {
         "default": settings.AI_MODEL,
         "models": settings.AI_AVAILABLE_MODELS,
@@ -2133,9 +2121,7 @@ from app.agents.deepagents_assistant import AgentContext, Decision, InterruptDat
 from app.api.deps import get_current_user_ws
 from app.db.models.user import User
 {%- endif %}
-{%- if cookiecutter.websocket_auth_api_key %}
 from app.core.config import settings
-{%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.db.session import get_db_context{% if cookiecutter.use_sqlite %}, get_db_session
 from contextlib import contextmanager{% endif %}
@@ -2154,7 +2140,6 @@ router = APIRouter()
 @router.get("/agent/models")
 async def list_models() -> dict[str, Any]:
     """Return available LLM models and the current default."""
-    from app.core.config import settings
     return {
         "default": settings.AI_MODEL,
         "models": settings.AI_AVAILABLE_MODELS,
@@ -2799,9 +2784,7 @@ from app.agents.pydantic_deep_assistant import PydanticDeepContext, get_agent
 from app.api.deps import get_current_user_ws
 from app.db.models.user import User
 {%- endif %}
-{%- if cookiecutter.websocket_auth_api_key %}
 from app.core.config import settings
-{%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.db.session import get_db_context{% if cookiecutter.use_sqlite %}, get_db_session
 from contextlib import contextmanager{% endif %}
@@ -2820,7 +2803,6 @@ router = APIRouter()
 @router.get("/agent/models")
 async def list_models() -> dict[str, Any]:
     """Return available LLM models and the current default."""
-    from app.core.config import settings
     return {
         "default": settings.AI_MODEL,
         "models": settings.AI_AVAILABLE_MODELS,

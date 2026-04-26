@@ -101,7 +101,8 @@ class RAGSyncService:
             status="cancelled",
             completed_at=datetime.now(UTC),
         )
-        assert cancelled is not None
+        if cancelled is None:
+            raise NotFoundError(message="Sync log not found", details={"sync_id": sync_id})
         return cancelled
 
 
@@ -207,7 +208,8 @@ class RAGSyncService:
             status="cancelled",
             completed_at=datetime.now(UTC),
         )
-        assert cancelled is not None
+        if cancelled is None:
+            raise NotFoundError(message="Sync log not found", details={"sync_id": sync_id})
         return cancelled
 
 

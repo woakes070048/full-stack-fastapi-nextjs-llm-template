@@ -4,7 +4,7 @@
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import EmailStr, Field
+from pydantic import EmailStr, Field, field_validator
 
 from app.schemas.base import BaseSchema, TimestampSchema
 
@@ -23,6 +23,11 @@ class UserBase(BaseSchema):
     full_name: str | None = Field(default=None, max_length=255)
     is_active: bool = True
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.lower()
+
 
 class UserCreate(BaseSchema):
     """Schema for creating a user."""
@@ -31,6 +36,11 @@ class UserCreate(BaseSchema):
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
     role: UserRole = UserRole.USER
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return v.lower()
 
 
 class UserUpdate(BaseSchema):
@@ -41,6 +51,11 @@ class UserUpdate(BaseSchema):
     full_name: str | None = Field(default=None, max_length=255)
     is_active: bool | None = None
     role: UserRole | None = None
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, v: str | None) -> str | None:
+        return v.lower() if v is not None else None
 
 
 class UserRead(UserBase, TimestampSchema):

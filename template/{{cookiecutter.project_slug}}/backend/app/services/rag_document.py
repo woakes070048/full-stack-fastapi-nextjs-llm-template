@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundError
 from app.db.models.rag_document import RAGDocument
 from app.repositories import rag_document_repo
+from app.services.file_storage import get_file_storage
 
 
 logger = logging.getLogger(__name__)
@@ -111,7 +112,8 @@ class RAGDocumentService:
             error_message="",
             completed_at=None,
         )
-        assert updated is not None  # we just looked it up
+        if updated is None:
+            raise NotFoundError(message="Document not found", details={"doc_id": doc_id})
         return updated
 
     async def delete_document(
@@ -139,8 +141,6 @@ class RAGDocumentService:
         # Cascade: file storage
         if doc.storage_path:
             try:
-                from app.services.file_storage import get_file_storage
-
                 storage = get_file_storage()
                 await storage.delete(doc.storage_path)
             except Exception as e:
@@ -169,8 +169,6 @@ class RAGDocumentService:
         doc = await self.get_document(doc_id)
         if not doc.storage_path:
             raise NotFoundError(message="No file stored for this document")
-
-        from app.services.file_storage import get_file_storage
 
         storage = get_file_storage()
         file_path = storage.get_full_path(doc.storage_path)
@@ -203,6 +201,7 @@ from sqlalchemy.orm import Session
 from app.core.exceptions import NotFoundError
 from app.db.models.rag_document import RAGDocument
 from app.repositories import rag_document_repo
+from app.services.file_storage import get_file_storage
 
 
 logger = logging.getLogger(__name__)
@@ -299,7 +298,8 @@ class RAGDocumentService:
             error_message="",
             completed_at=None,
         )
-        assert updated is not None
+        if updated is None:
+            raise NotFoundError(message="Document not found", details={"doc_id": doc_id})
         return updated
 
     def delete_document(
@@ -327,8 +327,6 @@ class RAGDocumentService:
         # Cascade: file storage
         if doc.storage_path:
             try:
-                from app.services.file_storage import get_file_storage
-
                 storage = get_file_storage()
                 storage.delete(doc.storage_path)
             except Exception as e:
@@ -357,8 +355,6 @@ class RAGDocumentService:
         doc = self.get_document(doc_id)
         if not doc.storage_path:
             raise NotFoundError(message="No file stored for this document")
-
-        from app.services.file_storage import get_file_storage
 
         storage = get_file_storage()
         file_path = storage.get_full_path(doc.storage_path)

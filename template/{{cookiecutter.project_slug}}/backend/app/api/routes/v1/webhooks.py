@@ -1,6 +1,8 @@
 {%- if cookiecutter.enable_webhooks and cookiecutter.use_database %}
 """Webhook management routes."""
 
+from typing import Any
+
 from fastapi import APIRouter, Query, status
 {%- if cookiecutter.use_postgresql %}
 from uuid import UUID
@@ -13,6 +15,7 @@ from app.api.deps import CurrentAdmin
 from app.schemas.webhook import (
     WebhookCreate,
     WebhookDeliveryListResponse,
+    WebhookDeliveryRead,
     WebhookListResponse,
     WebhookRead,
     WebhookSecretResponse,
@@ -33,7 +36,7 @@ async def create_webhook(
 {%- if cookiecutter.use_jwt %}
     current_user: CurrentAdmin,
 {%- endif %}
-):
+) -> Any:
     """Create a new webhook subscription."""
     webhook = await webhook_service.create_webhook(
         data,
@@ -61,7 +64,7 @@ async def list_webhooks(
 {%- endif %}
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-):
+) -> Any:
     """List all webhooks."""
     webhooks, total = await webhook_service.list_webhooks(
 {%- if cookiecutter.use_jwt %}
@@ -92,7 +95,10 @@ async def list_webhooks(
 async def get_webhook(
     webhook_id: UUID,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Get a webhook by ID."""
     webhook = await webhook_service.get_webhook(webhook_id)
     return WebhookRead(
@@ -112,7 +118,10 @@ async def update_webhook(
     webhook_id: UUID,
     data: WebhookUpdate,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Update a webhook."""
     webhook = await webhook_service.update_webhook(webhook_id, data)
     return WebhookRead(
@@ -131,7 +140,10 @@ async def update_webhook(
 async def delete_webhook(
     webhook_id: UUID,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> None:
     """Delete a webhook."""
     await webhook_service.delete_webhook(webhook_id)
 
@@ -140,7 +152,10 @@ async def delete_webhook(
 async def test_webhook(
     webhook_id: UUID,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Send a test event to the webhook."""
     result = await webhook_service.test_webhook(webhook_id)
     return WebhookTestResponse(**result)
@@ -150,7 +165,10 @@ async def test_webhook(
 async def regenerate_webhook_secret(
     webhook_id: UUID,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Regenerate the webhook secret."""
     new_secret = await webhook_service.regenerate_secret(webhook_id)
     return WebhookSecretResponse(secret=new_secret)
@@ -160,12 +178,13 @@ async def regenerate_webhook_secret(
 async def list_webhook_deliveries(
     webhook_id: UUID,
     webhook_service: WebhookSvc,
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-):
+) -> Any:
     """Get delivery history for a webhook."""
-    from app.schemas.webhook import WebhookDeliveryRead
-
     deliveries, total = await webhook_service.get_deliveries(webhook_id, skip=skip, limit=limit)
     return WebhookDeliveryListResponse(
         items=[
@@ -196,7 +215,7 @@ def create_webhook(
 {%- if cookiecutter.use_jwt %}
     current_user: CurrentAdmin,
 {%- endif %}
-):
+) -> Any:
     """Create a new webhook subscription."""
     webhook = webhook_service.create_webhook(
         data,
@@ -224,7 +243,7 @@ def list_webhooks(
 {%- endif %}
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-):
+) -> Any:
     """List all webhooks."""
     webhooks, total = webhook_service.list_webhooks(
 {%- if cookiecutter.use_jwt %}
@@ -255,7 +274,10 @@ def list_webhooks(
 def get_webhook(
     webhook_id: str,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Get a webhook by ID."""
     webhook = webhook_service.get_webhook(webhook_id)
     return WebhookRead(
@@ -275,7 +297,10 @@ def update_webhook(
     webhook_id: str,
     data: WebhookUpdate,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Update a webhook."""
     webhook = webhook_service.update_webhook(webhook_id, data)
     return WebhookRead(
@@ -294,7 +319,10 @@ def update_webhook(
 def delete_webhook(
     webhook_id: str,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> None:
     """Delete a webhook."""
     webhook_service.delete_webhook(webhook_id)
 
@@ -303,12 +331,13 @@ def delete_webhook(
 def list_webhook_deliveries(
     webhook_id: str,
     webhook_service: WebhookSvc,
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-):
+) -> Any:
     """Get delivery history for a webhook."""
-    from app.schemas.webhook import WebhookDeliveryRead
-
     deliveries, total = webhook_service.get_deliveries(webhook_id, skip=skip, limit=limit)
     return WebhookDeliveryListResponse(
         items=[
@@ -339,7 +368,7 @@ async def create_webhook(
 {%- if cookiecutter.use_jwt %}
     current_user: CurrentAdmin,
 {%- endif %}
-):
+) -> Any:
     """Create a new webhook subscription."""
     webhook = await webhook_service.create_webhook(
         data,
@@ -367,7 +396,7 @@ async def list_webhooks(
 {%- endif %}
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-):
+) -> Any:
     """List all webhooks."""
     webhooks, total = await webhook_service.list_webhooks(
 {%- if cookiecutter.use_jwt %}
@@ -398,7 +427,10 @@ async def list_webhooks(
 async def get_webhook(
     webhook_id: str,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Get a webhook by ID."""
     webhook = await webhook_service.get_webhook(webhook_id)
     return WebhookRead(
@@ -418,7 +450,10 @@ async def update_webhook(
     webhook_id: str,
     data: WebhookUpdate,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> Any:
     """Update a webhook."""
     webhook = await webhook_service.update_webhook(webhook_id, data)
     return WebhookRead(
@@ -437,7 +472,10 @@ async def update_webhook(
 async def delete_webhook(
     webhook_id: str,
     webhook_service: WebhookSvc,
-):
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
+) -> None:
     """Delete a webhook."""
     await webhook_service.delete_webhook(webhook_id)
 
@@ -446,12 +484,13 @@ async def delete_webhook(
 async def list_webhook_deliveries(
     webhook_id: str,
     webhook_service: WebhookSvc,
+{%- if cookiecutter.use_jwt %}
+    current_user: CurrentAdmin,
+{%- endif %}
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-):
+) -> Any:
     """Get delivery history for a webhook."""
-    from app.schemas.webhook import WebhookDeliveryRead
-
     deliveries, total = await webhook_service.get_deliveries(webhook_id, skip=skip, limit=limit)
     return WebhookDeliveryListResponse(
         items=[

@@ -2,6 +2,7 @@
 """RAG API routes for collection management, search, document upload, and deletion."""
 
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -24,7 +25,10 @@ from app.api.deps import CurrentAdmin, CurrentUser
 {%- endif %}
 {%- if (cookiecutter.use_postgresql or cookiecutter.use_sqlite) %}
 from app.api.deps import RAGDocumentSvc, RAGSyncSvc, SyncSourceSvc
+from app.core.config import settings as app_settings
 from app.core.exceptions import NotFoundError
+from app.rag.config import get_supported_formats
+from app.rag.connectors import CONNECTOR_REGISTRY
 from app.schemas.sync_source import (
     ConnectorConfigField,
     ConnectorInfo,
@@ -34,6 +38,11 @@ from app.schemas.sync_source import (
     SyncSourceRead,
     SyncSourceUpdate,
 )
+from app.services.file_storage import get_file_storage
+{%- if not (cookiecutter.use_celery or cookiecutter.use_taskiq or cookiecutter.use_arq) %}
+from app.tasks.rag import ingest_document_in_background, sync_local_in_background, sync_source_in_background
+{%- endif %}
+from fastapi.responses import FileResponse
 {%- endif %}
 from app.schemas.rag import (
     RAGCollectionInfo,
@@ -58,19 +67,24 @@ router = APIRouter()
 @router.get("/supported-formats")
 async def get_supported_formats_endpoint() -> Any:
     """Return file formats supported by the current PDF parser configuration."""
-    from app.rag.config import get_supported_formats
-
 {%- if cookiecutter.use_all_pdf_parsers %}
-    from app.core.config import settings as app_settings
-    parser_name = getattr(app_settings, "PDF_PARSER", "pymupdf")
+    from app.core.config import settings as _app_settings
+    from app.rag.config import get_supported_formats as _get_supported_formats
+    parser_name = getattr(_app_settings, "PDF_PARSER", "pymupdf")
+    return {"parser": parser_name, "formats": sorted(_get_supported_formats(parser_name))}
 {%- elif cookiecutter.use_llamaparse %}
+    from app.rag.config import get_supported_formats as _get_supported_formats
     parser_name = "llamaparse"
+    return {"parser": parser_name, "formats": sorted(_get_supported_formats(parser_name))}
 {%- elif cookiecutter.use_liteparse %}
+    from app.rag.config import get_supported_formats as _get_supported_formats
     parser_name = "liteparse"
+    return {"parser": parser_name, "formats": sorted(_get_supported_formats(parser_name))}
 {%- else %}
+    from app.rag.config import get_supported_formats as _get_supported_formats
     parser_name = "pymupdf"
+    return {"parser": parser_name, "formats": sorted(_get_supported_formats(parser_name))}
 {%- endif %}
-    return {"parser": parser_name, "formats": sorted(get_supported_formats(parser_name))}
 
 
 @router.get("/collections", response_model=RAGCollectionList)
@@ -94,12 +108,10 @@ async def create_collection(
 {%- endif %}
 ) -> Any:
     """Create and initialize a new collection."""
-    import re
-    if not re.match(r'^[a-zA-Z][a-zA-Z0-9_]{0,63}$', name):
-        raise HTTPException(status_code=400, detail="Collection name must start with a letter and contain only letters, numbers, and underscores (max 64 chars)")
-    if name.lower() == "all":
-        raise HTTPException(status_code=400, detail="'all' is a reserved collection name")
-    await vector_store._ensure_collection(name)  # type: ignore[attr-defined]
+    try:
+        await vector_store.create_collection(name)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     return RAGMessageResponse(message=f"Collection '{name}' created successfully.")
 
 
@@ -226,11 +238,6 @@ async def ingest_file(
 ) -> Any:
     """Upload and ingest a file into a collection. Tracks status in DB."""
 
-
-
-    from app.core.config import settings as app_settings
-    from app.rag.config import get_supported_formats
-
 {%- if cookiecutter.use_all_pdf_parsers %}
     ALLOWED = get_supported_formats(getattr(app_settings, "PDF_PARSER", "pymupdf"))
 {%- elif cookiecutter.use_llamaparse %}
@@ -254,7 +261,6 @@ async def ingest_file(
     if len(data) > max_size:
         raise HTTPException(status_code=413, detail=f"File too large. Maximum {app_settings.MAX_UPLOAD_SIZE_MB}MB.")
 
-    from app.services.file_storage import get_file_storage
     storage = get_file_storage()
     storage_path = await storage.save(f"rag/{name}", filename, data)
 
@@ -271,11 +277,10 @@ async def ingest_file(
 {%- endif %}
     doc_id = rag_doc.id
 
-    await vector_store._ensure_collection(name)  # type: ignore[attr-defined]
+    await vector_store.create_collection(name)
 {%- if cookiecutter.use_celery or cookiecutter.use_taskiq or cookiecutter.use_arq %}
 
     # Save to shared media volume (accessible by both app and worker containers)
-    import os
     tmp_dir = os.path.join(str(app_settings.MEDIA_DIR), "_rag_tmp")
     os.makedirs(tmp_dir, exist_ok=True)
     tmp_path = os.path.join(tmp_dir, f"{str(doc_id)}{ext}")
@@ -314,34 +319,13 @@ async def ingest_file(
     )
 {%- else %}
 
-    import os
     tmp_dir = os.path.join(tempfile.gettempdir(), "rag_ingest")
     os.makedirs(tmp_dir, exist_ok=True)
     tmp_path = os.path.join(tmp_dir, f"{str(doc_id)}{ext}")
     with open(tmp_path, "wb") as f:
         f.write(data)
 
-    async def _ingest_in_background(doc_id_str: str, collection: str, fpath: str, source: str, do_replace: bool) -> None:
-        """Run ingestion via FastAPI BackgroundTasks."""
-        from app.db.session import get_db_context
-        from app.rag.ingestion import IngestionService
-        from app.services.rag_document import RAGDocumentService
-
-        try:
-            svc = IngestionService.from_settings()
-            result = await svc.ingest_file(filepath=Path(fpath), collection_name=collection, replace=do_replace, source_path=source)
-            async with get_db_context() as bg_db:
-                bg_doc_svc = RAGDocumentService(bg_db)
-                await bg_doc_svc.complete_ingestion(doc_id_str, vector_document_id=result.document_id)
-        except Exception as exc:
-            logger.error(f"Background ingestion failed: {exc}")
-            async with get_db_context() as bg_db:
-                bg_doc_svc = RAGDocumentService(bg_db)
-                await bg_doc_svc.fail_ingestion(doc_id_str, error_message=str(exc))
-        finally:
-            Path(fpath).unlink(missing_ok=True)
-
-    background_tasks.add_task(_ingest_in_background, str(doc_id), name, tmp_path, filename, replace)
+    background_tasks.add_task(ingest_document_in_background, str(doc_id), name, tmp_path, filename, replace)
 
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
@@ -404,9 +388,6 @@ def download_rag_document(
 {%- endif %}
 ) -> Any:
     """Download the original file."""
-
-    from fastapi.responses import FileResponse
-
     try:
 {%- if cookiecutter.use_postgresql %}
         file_path, filename, mime_type = await rag_doc_svc.get_download_info(doc_id)
@@ -432,7 +413,6 @@ def delete_rag_document(
 {%- endif %}
 ) -> None:
     """Delete a document from SQL, vector store, and file storage."""
-
 
     try:
 {%- if cookiecutter.use_postgresql %}
@@ -548,47 +528,7 @@ async def trigger_local_sync(
         str(sync_log.id), "local", request.collection_name, request.mode, request.path,
     )
 {%- else %}
-    from app.db.session import get_db_context
-
-    async def _sync_in_background(log_id: str, collection: str, mode: str, path: str) -> None:
-        """Run sync via FastAPI BackgroundTasks."""
-        from app.rag.ingestion import IngestionService
-        from app.services.rag_sync import RAGSyncService
-
-        svc = IngestionService.from_settings()
-        ingested = skipped = failed = total = 0
-
-        try:
-            target = Path(path)
-            files = list(target.rglob("*")) if target.is_dir() else [target]
-            files = [f for f in files if f.is_file()]
-            total = len(files)
-
-            for filepath in files:
-                try:
-                    await svc.ingest_file(filepath=filepath, collection_name=collection, replace=(mode == "full"), source_path=str(filepath))
-                    ingested += 1
-                except Exception as e:
-                    logger.warning(f"Failed to ingest {filepath}: {e}")
-                    failed += 1
-        except Exception as e:
-            logger.error(f"Sync failed: {e}")
-
-        async with get_db_context() as bg_db:
-            bg_sync_svc = RAGSyncService(bg_db)
-            try:
-                await bg_sync_svc.complete_sync(
-                    log_id,
-                    status="done" if not failed else "error",
-                    total_files=total,
-                    ingested=ingested,
-                    skipped=skipped,
-                    failed=failed,
-                )
-            except NotFoundError:
-                logger.error(f"Sync log {log_id} not found during background update")
-
-    background_tasks.add_task(_sync_in_background, str(sync_log.id), request.collection_name, request.mode, request.path)
+    background_tasks.add_task(sync_local_in_background, str(sync_log.id), request.collection_name, request.mode, request.path)
 {%- endif %}
 
     return RAGSyncResponse(id=str(sync_log.id), status="running", message=f"Sync started for '{request.collection_name}' (mode={request.mode})")
@@ -781,59 +721,7 @@ async def trigger_sync_source(
     pool = await get_arq_pool()
     await pool.enqueue_job("sync_single_source_task", source_id, str(sync_log.id))
 {%- else %}
-    async def _run_source_sync_bg(src_id: str, log_id: str) -> None:
-        """Execute sync via FastAPI BackgroundTasks."""
-        import tempfile
-        from pathlib import Path
-
-        from app.db.session import get_db_context
-        from app.rag.connectors import CONNECTOR_REGISTRY
-        from app.rag.ingestion import IngestionService
-        from app.services.rag_sync import RAGSyncService
-        from app.services.sync_source import SyncSourceService
-
-        async with get_db_context() as bg_db:
-            source_svc = SyncSourceService(bg_db)
-            sync_svc = RAGSyncService(bg_db)
-            try:
-                source = await source_svc.get_source(src_id)
-                connector_cls = CONNECTOR_REGISTRY.get(source.connector_type)
-                if not connector_cls:
-                    await sync_svc.complete_sync(
-                        log_id,
-                        status="error",
-                        error_message=f"Unknown connector: {source.connector_type}",
-                    )
-                    return
-                connector = connector_cls()
-                config = source.config if isinstance(source.config, dict) else {}
-                files = await connector.list_files(config)
-                ingestion = IngestionService.from_settings()
-                ingested = failed = 0
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    for f in files:
-                        try:
-                            local_path = await connector.download_file(f, Path(tmp_dir))
-                            await ingestion.ingest_file(
-                                filepath=local_path, collection_name=source.collection_name,
-                                replace=(source.sync_mode == "full"), source_path=f.source_path,
-                            )
-                            ingested += 1
-                        except Exception as e:
-                            logger.warning(f"Sync file failed {f.name}: {e}")
-                            failed += 1
-                await sync_svc.complete_sync(
-                    log_id,
-                    status="done" if not failed else "error",
-                    total_files=len(files),
-                    ingested=ingested,
-                    failed=failed,
-                )
-            except Exception as e:
-                logger.error(f"Source sync failed: {e}")
-                await sync_svc.complete_sync(log_id, status="error", error_message=str(e))
-
-    background_tasks.add_task(_run_source_sync_bg, source_id, str(sync_log.id))
+    background_tasks.add_task(sync_source_in_background, source_id, str(sync_log.id))
 {%- endif %}
 
     return RAGSyncResponse(
@@ -850,8 +738,6 @@ async def list_connectors(
 {%- endif %}
 ) -> Any:
     """List available sync connector types with their config schemas."""
-    from app.rag.connectors import CONNECTOR_REGISTRY
-
     items = []
     for _connector_type, connector_cls in CONNECTOR_REGISTRY.items():
         schema_fields = {}
